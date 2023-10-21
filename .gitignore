@@ -1,0 +1,11 @@
+# general
+__pycache__
+.venv
+Manifest.toml
+Project.toml
+.ipynb_checkpoints
+*.log
+TODO
+# input/output files
+data.xml
+plot.spec.json
