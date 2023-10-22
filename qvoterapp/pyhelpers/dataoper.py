@@ -1,5 +1,4 @@
 import json
-import logging
 from itertools import product
 from pathlib import Path
 from typing import Any, Dict, Union
@@ -35,17 +34,17 @@ class SpecManager:
 
     @staticmethod
     def _process_value(
-        val: Union[list, dict, int, float, str]
+        val: Union[list, dict, int, float, str], multiple: bool = False
     ) -> Union[NDArray, int, float, str]:
         if isinstance(val, (int, float, str)):
             parsed_val = np.array([val])
-        elif isinstance(val, list):
+        elif multiple and isinstance(val, list):
             parsed_val = np.unique(np.array(val))
             if parsed_val.size == 0:
                 raise SpecificationError(
                     f"Value {val} presents an empty list of parameters"
                 )
-        elif isinstance(val, dict):
+        elif multiple and isinstance(val, dict):
             try:
                 start = val["start"]
                 step = val["step"]
@@ -59,7 +58,8 @@ class SpecManager:
                 raise SpecificationError(
                     f"Value {val} presents an empty list of parameters"
                 )
-
+        elif isinstance(val, (list, dict)):
+            raise SpecificationError(f"Value {val} in config cannot be non-singular")
         else:
             raise SpecificationError(
                 f"Value {val} in config has an invalid type {type(val)}"
@@ -67,7 +67,39 @@ class SpecManager:
         return parsed_val
 
     def _parse_part(self, part_spec: Dict[str, Any]) -> pd.DataFrame:
-        pass
+        # find plot argument and group related keys
+        plot_args = part_spec.pop("plot.args")
+        try:
+            plot_group = part_spec.pop("plot.group")
+        except KeyError:
+            plot_group = None
+        if "groups" in part_spec:
+            if plot_group is None:
+                raise SpecificationError(
+                    "'groups' section can be used only if `plot.group` parameter added"
+                )
+            if plot_args in part_spec or plot_group in part_spec:
+                raise SpecificationError(
+                    "Arguments and groups can't be given both in the 'groups' section and outside of it"
+                )
+            groups = part_spec.pop("groups")
+            for group in groups:
+                group: dict
+                self._process_value(group.pop(plot_args), multiple=True)
+                self._process_value(group.pop(plot_group), multiple=True)
+                # ! if dict, raise warning że coś tam jest a nie powinno
+
+            # ! zrobić słownik wszystkich do wyplucia, z odpowiednim parsowaniem
+            # ! odjąć od słownika te elementy z groupa i arga
+            # ! a następnie collectować
+            # ! na koniec, pozostałe ".net"
+        else:
+            # ! wziąć na multiplu argumenty (warning jeśli jeden) (z popem)
+            # ! jeśli plot_group, to wziąc na multiplu grupy (z popem)
+            # !     i ostrzec warningiem jak pojedyncze ; przeciwnie pominąć
+            # ! zrobić to samo z plującym słownikiem co wyżej, ale pamietać od
+            # ! zależności od groupa
+            pass
 
     def _parse_part_OLD(self, part_spec: Dict[str, Any]) -> pd.DataFrame:
         # general
@@ -80,8 +112,6 @@ class SpecManager:
             for param_key, param_val in part_spec.items()
             if "net." in param_key
         }
-        # ! dawać też warning jak w groups są inne wartości niż plot.args i plot.group
-        # ! oraz errory jak w poszczególnych slownikach różne te
         # model
         x = self._process_value(part_spec["x"])
         q = self._process_value(part_spec["q"])
@@ -102,8 +132,6 @@ class SpecManager:
         )
         return part_req
 
-    # ! TODO type validation and CONVERSION!!!!!
-
     def parse(self) -> pd.DataFrame:
         part_req_list = []
         for plot_name, part_spec in self.spec.items():
@@ -112,7 +140,7 @@ class SpecManager:
                 part_req_list.append(part_req)
             except KeyError as err:
                 raise SpecificationError(
-                    f"Mandatory key {err} is missing in {plot_name} config"
+                    f"Mandatory key {err} is missing somewhere in {plot_name} config"
                 )
         full_req = pd.concat(part_req_list, ignore_index=True)
         full_req.drop_duplicates(inplace=True)
@@ -160,7 +188,3 @@ class DataManager:
 
         data.reset_index(drop=True, inplace=True)
         data.to_xml(self.data_path)
-
-
-# ! always reset_index when joining!
-# ! todo - always assing exit time and probability columns when creating
