@@ -21,4 +21,6 @@ if not exist .venv (
     call .venv\Scripts\activate.bat
 )
 
-%py% qvoterapp\qvoter.py %*
+if %errorlevel% EQU 0 (
+    %py% qvoterapp\qvoter.py %*
+)
