@@ -5,7 +5,9 @@ from typing import Any
 import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
+from pathlib import Path
 from pyhelpers.setapp import QVoterAppError
+from pyhelpers.fileoper import DataManager, SpecManager
 
 
 class SimulationError(QVoterAppError):
@@ -29,8 +31,19 @@ class SystemParams:
         self.net_type: str = net_type
         self.net_params: dict = net_params
 
+    def __str__(self) -> str:
+        net_params_frmtd = ",".join(
+            [
+                f"{param_key}={param_val}"
+                for param_key, param_val in self.net_params.items()
+            ]
+        )
+        raw_string = f"""q-voter system for {self.net_type}({net_params_frmtd}) network
+            of size N={self.size} with model params: x={self.x}, q={self.q}, eps={self.eps}"""
+        return " ".join(raw_string.split())
 
-class Simulation:
+
+class SingleSimulation:
     def __init__(
         self,
         jl_interpreter: Any,
@@ -71,41 +84,50 @@ class Simulation:
             net_params=self._format_net_params(),
         )
         exit_time, exit_proba = self.jl_interpreter.eval(jl_statemet)
-        return {"AvgExitTime": exit_time, "ExitProbability": exit_proba}
+        return {"avg_exit_time": exit_time, "exit_proba": exit_proba}
 
 
-class BulkSimulator:
-    def __init__(self, jl_interpreter: Any) -> None:
-        # self.data = pd.DataFrame()
-        self.data = pd.DataFrame(
-            {
-                "x": [0.5],
-                "q": [2],
-                "eps": [0.1],
-                "size": [100],
-                "net_type": ["BA"],
-                "k": [4],
-                "mc_runs": [1000],
-            }
-        )
+class SimulCollector:
+    def __init__(
+        self,
+        jl_interpreter: Any,
+        str_spec_path: str,
+        str_data_path: str,
+        processes: int = 10,
+        chunk_size: int = 20,
+    ) -> None:
         self.jl_interpreter = jl_interpreter
+        self.processes = processes
+        self.chunk_size = chunk_size
+        self.data_manager = DataManager(Path(str_data_path))
+        full_data_req = SpecManager(Path(str_spec_path)).parse()
+        self.data = self.data_manager.get_working_data(full_data_req)
 
     def _run_one(self, ix: int) -> None:
         params_dict = self.data.iloc[ix].to_dict()
         mc_runs = params_dict.pop("mc_runs")
-        results = Simulation(
+        system_params = SystemParams(**params_dict)
+        results = SingleSimulation(
             jl_interpreter=self.jl_interpreter,
-            params=SystemParams(**params_dict),
+            params=system_params,
             mc_runs=mc_runs,
         ).run()
-        self.data.loc[0, results.keys()] = results.values()
-        logging.info("done")
+        self.data.loc[ix, results.keys()] = results.values()
+        logging.info(f"Simulation: {system_params} finished (M={mc_runs})")
 
-    def _run_chunk(self, chunk_ix: NDArray) -> None:
-        indices = range(100)  # ! TODO
-        [self._run_one(ix) for ix in indices]
-        # ! save the results to the file (standard)
+    def _run_chunk(self, chunk_ixx: NDArray) -> None:
+        [self._run_one(ix) for ix in chunk_ixx]
+        self.data_manager.update_file(self.data.iloc[chunk_ixx])
+        logging.info(
+            f"Data chunk saved (indices {chunk_ixx.min()}-{chunk_ixx.max()} / {len(self.data)})"
+        )
 
-    def run(self):
-        with ThreadPool(processes=10) as pool:
-            pool.map(self._run_chunk, [np.arange(20)])
+    def run(self) -> None:
+        logging.info("Running the simulations in a thread pool...")
+        data_indices = self.data.index.to_numpy()
+        chunk_ixx_list = np.array_split(
+            data_indices, data_indices.size / self.chunk_size
+        )
+        with ThreadPool(processes=self.processes) as pool:
+            pool.map(self._run_chunk, chunk_ixx_list)
+        logging.info("All the required simulations completed")
