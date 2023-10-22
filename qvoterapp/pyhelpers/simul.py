@@ -3,7 +3,6 @@ from multiprocessing.pool import ThreadPool
 from typing import Any
 
 import numpy as np
-import pandas as pd
 from numpy.typing import NDArray
 from pathlib import Path
 from pyhelpers.setapp import QVoterAppError
