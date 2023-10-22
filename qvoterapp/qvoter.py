@@ -1,7 +1,13 @@
 import logging
 from argparse import ArgumentParser
 
-from pyhelpers.setapp import QVoterAppError, read_spec_file, set_julia, set_logger
+from pyhelpers.setapp import QVoterAppError, set_julia, set_logger
+from pyhelpers.simul import SimulCollector
+
+SPEC_PATH = "plot.spec.json"
+DATA_PATH = "data.xml"
+PROCESSES = 10
+CHUNK_SIZE = 10
 
 parser = ArgumentParser(
     prog="Q-voter exit time and exit probability simulation & plotting app",
@@ -26,15 +32,14 @@ if __name__ == "__main__":
     set_logger()
     JuliaMain = set_julia()
 
-    # TODO: the following
-    # if args.only_simulations:
-    #     pass
-    # else:
-    #     pass
+    if args.plot_spec:
+        spec_path = args.plot_spec
+    else:
+        spec_path = SPEC_PATH
 
     try:
-        plot_spec: dict = read_spec_file(args.plot_spec)
-        from pyhelpers.manager import SpecParser
-        SpecParser(plot_spec).asses_data_req()
+        SimulCollector(JuliaMain, spec_path, DATA_PATH, PROCESSES, CHUNK_SIZE).run()
+        if not args.only_simulations:
+            pass
     except QVoterAppError as err:
         logging.error(f"{err.__class__.__name__}: {err}")
