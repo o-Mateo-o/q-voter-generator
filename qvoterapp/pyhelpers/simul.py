@@ -15,6 +15,8 @@ class SimulationError(QVoterAppError):
 
 
 class SimulParams:
+    # ! stick to the `./models.md` guidelines
+    # ! net_params are the other than size args
     def __init__(
         self,
         mc_runs: int,
@@ -25,49 +27,65 @@ class SimulParams:
         net_type: str,
         **net_params,
     ) -> None:
-        self.mc_runs: int = mc_runs
-        self.x: int = x
-        self.q: int = q
-        self.eps: float = eps
-        self.size: int = size
-        self.net_type: str = net_type
-        self.net_params: dict = net_params
+        self.mc_runs: int = self.parse_param(mc_runs, "number")
+        self.x: int = self.parse_param(x, "float_prop")
+        self.q: int = self.parse_param(q, "number")
+        self.eps: float = self.parse_param(eps, "float_prop")
+        self.size: int = self.parse_param(size, "number")
+        self.net_type: str = self.parse_param(net_type, "net_key")
+        self.net_params: dict = self.parse_net_params(net_params, self.net_type)
 
-    def parse_param(self, param: Any, expected_type: str) -> Any:
-        # ! stick to the `./models.md` guidelines
-        # ! net_params are the other than size args
+    @staticmethod
+    def parse_param(param: Any, expected_type: str) -> Any:
         if expected_type == "number":
-            if not isinstance(param, int):
+            try:
+                param = int(param)
+            except ValueError:
                 raise SimulationError(f"Parameter {param} must be numeric")
             if param < 0:
                 raise SimulationError(f"Parameter {param} must be positive")
         elif expected_type == "float_prop":
-            if not isinstance(param, (float, int)):
+            try:
+                param = float(param)
+            except ValueError:
                 raise SimulationError(f"Parameter {param} must be numeric")
             if param < 0 or param > 1:
                 raise SimulationError(f"Parameter {param} must be in [0, 1] range")
         elif expected_type == "net_key":
+            try:
+                param = str(param)
+            except ValueError:
+                raise SimulationError(f"Parameter {param} must be a string")
             if param not in ("BA", "WS", "C"):
                 raise SimulationError(f"Net type {param} is not allowed")
         else:
             raise SimulationError(f"Unknown parameter type '{expected_type}'")
         return param
 
-    @property
-    def net_params_frmtd(self) -> str:
-        # ! stick to the `./models.md` guidelines
-        # ! net_params are the other than size args
+    def parse_net_params(self, net_params: dict, net_type: str) -> dict:
         try:
-            if self.net_type == "BA":
-                arg_list = [self.net_params["k"]]
-            if self.net_type == "WS":
-                arg_list = [self.net_params["k"], self.net_params["beta"]]
-            if self.net_type == "C":
-                arg_list = []
+            if net_type == "BA":
+                return {self.parse_param(net_params["k"], "number")}
+            if net_type == "WS":
+                return {
+                    self.parse_param(net_params["k"], "number"),
+                    self.parse_param(net_params["beta"], "float_prop"),
+                }
+            if net_type == "C":
+                return {}
         except KeyError as err:
             raise SimulationError(
-                f"The {err} parameter is required for {self.net_type} graphs"
+                f"The {err} parameter is required for {net_type} graphs"
             )
+
+    @property
+    def net_params_julia(self) -> str:
+        if self.net_type == "BA":
+            arg_list = [self.net_params["k"]]
+        if self.net_type == "WS":
+            arg_list = [self.net_params["k"], self.net_params["beta"]]
+        if self.net_type == "C":
+            arg_list = []
         return "," + ",".join(map(str, arg_list))
 
     def to_dict(self, formatted: bool = False) -> dict:
@@ -80,7 +98,7 @@ class SimulParams:
             "N": self.size,
         }
         if formatted:
-            return {**common_dict_part, "net_params": self.net_params_frmtd}
+            return {**common_dict_part, "net_params": self.net_params_julia}
         else:
             return {**common_dict_part, **self.net_params}
 
@@ -139,7 +157,7 @@ class SimulCollector:
         ).run()
         new_row = {**simul_params.to_dict(), **results}
         # add results & possibly rewrite the types (it's after SimulParams parsing)
-        self.data.loc[ix, new_row.keys()] = new_row.values() 
+        self.data.loc[ix, new_row.keys()] = new_row.values()
         logging.info(f"Simulation: {simul_params} finished. Results {results}")
 
     def _run_chunk(self, chunk_ixx: NDArray) -> None:
