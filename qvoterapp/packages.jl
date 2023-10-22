@@ -17,7 +17,7 @@ function ensure_packages()
             if not_installed_message_flag
                 println("Some Julia packages are not yet installed. Please wait... ")
             end
-            global not_installed_message_flag = false
+            not_installed_message_flag = false
             Pkg.add(dependency)
         end
     end

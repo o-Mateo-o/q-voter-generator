@@ -1,5 +1,6 @@
 import logging
-from multiprocessing.pool import ThreadPool
+import multiprocessing
+from multiprocessing import Pool
 from pathlib import Path
 from typing import Any
 
@@ -7,7 +8,7 @@ import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 from pyhelpers.dataoper import DataManager, SpecManager
-from pyhelpers.setapp import QVoterAppError
+from pyhelpers.setapp import QVoterAppError, import_julia_objects, log_julia_pool_init
 
 
 class SimulationError(QVoterAppError):
@@ -118,31 +119,27 @@ class SimulParams:
 class SingleSimulation:
     def __init__(
         self,
-        jl_interpreter: Any,
         simul_params: SimulParams,
     ) -> None:
-        self.jl_interpreter = jl_interpreter
         self.simul_params = simul_params
 
     def run(self) -> dict:
+        from julia import Main
+
         jl_statemet = 'examine_q_voter({x}, "{net_type}", {M}, {q}, {eps}, {N}{net_params})'.format(
             **self.simul_params.to_dict(formatted=True)
         )
-        exit_time, exit_proba = self.jl_interpreter.eval(jl_statemet)
+        exit_time, exit_proba = Main.eval(jl_statemet)
         return {"avg_exit_time": exit_time, "exit_proba": exit_proba}
 
 
 class SimulCollector:
     def __init__(
         self,
-        jl_interpreter: Any,
         str_spec_path: str,
         str_data_path: str,
-        processes: int = 10,
         chunk_size: int = 20,
     ) -> None:
-        self.jl_interpreter = jl_interpreter
-        self.processes = processes
         self.chunk_size = chunk_size
         self.data_manager = DataManager(Path(str_data_path))
         full_data_req = SpecManager(Path(str_spec_path)).parse()
@@ -152,7 +149,6 @@ class SimulCollector:
         raw_params_dict = self.data.iloc[ix].to_dict()
         simul_params = SimulParams(**raw_params_dict)
         results = SingleSimulation(
-            jl_interpreter=self.jl_interpreter,
             simul_params=simul_params,
         ).run()
         new_row = {**simul_params.to_dict(), **results}
@@ -173,6 +169,9 @@ class SimulCollector:
         chunk_ixx_list = np.array_split(
             data_indices, data_indices.size / self.chunk_size
         )
-        with ThreadPool(processes=self.processes) as pool:
+        PROCESSES = 2
+        multiprocessing.set_start_method("spawn")
+        log_julia_pool_init()
+        with Pool(processes=PROCESSES, initializer=import_julia_objects) as pool:
             pool.map(self._run_chunk, chunk_ixx_list)
         logging.info("All the required simulations completed")

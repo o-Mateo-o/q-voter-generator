@@ -1,4 +1,5 @@
 import logging
+import multiprocessing
 from pathlib import Path
 from typing import Any
 
@@ -36,19 +37,27 @@ def set_logger() -> None:
     log.addHandler(file)
 
 
-def set_julia() -> Any:
-    from julia import Main as JuliaMain
-    from julia import Pkg as JuliaPkg
+def init_julia() -> Any:
+    from julia import Main, Pkg
 
-    logging.info("Preparing Julia...")
-    # project
-    JuliaPkg.activate(".")
-    # packages
-    JuliaMain.include("qvoterapp/packages.jl")
-    JuliaMain.eval("ensure_packages()")
-    # simulation module
-    JuliaMain.include("qvoterapp/jlhelpers/NetSimul.jl")
-    JuliaMain.eval("using .NetSimul")
-    logging.info("Julia NetSimul module ready!")
+    logging.info("Ensuring Julia packages...")
+    Pkg.activate(".")
+    Main.include("qvoterapp/packages.jl")
+    Main.eval("ensure_packages()")
+    logging.info("Julia project ready!")
 
-    return JuliaMain
+
+def log_julia_pool_init():
+    pids = [process.pid for process in multiprocessing.active_children()]
+    if pids:
+        logging.info(f"Initializing Julia on processes: {', '.join(pids)}...")
+    else:
+        logging.warning("No children process to initialize Julia on")
+
+
+def import_julia_objects():
+    from julia import Main, Pkg
+
+    Pkg.activate(".")
+    Main.include("qvoterapp/jlhelpers/NetSimul.jl")
+    Main.eval("using .NetSimul")
