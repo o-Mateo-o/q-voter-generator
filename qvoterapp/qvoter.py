@@ -8,13 +8,6 @@ SPEC_PATH = "plot.spec.json"
 DATA_PATH = "data.xml"
 PROCESSES = 10
 CHUNK_SIZE = 10
-from pyhelpers.setapp import QVoterAppError, set_julia, set_logger
-from pyhelpers.simul import SimulCollector
-
-SPEC_PATH = "plot.spec.json"
-DATA_PATH = "data.xml"
-PROCESSES = 10
-CHUNK_SIZE = 10
 
 parser = ArgumentParser(
     prog="Q-voter exit time and exit probability simulation & plotting app",
