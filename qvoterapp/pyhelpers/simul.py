@@ -6,7 +6,7 @@ import numpy as np
 from numpy.typing import NDArray
 from pathlib import Path
 from pyhelpers.setapp import QVoterAppError
-from pyhelpers.fileoper import DataManager, SpecManager
+from pyhelpers.dataoper import DataManager, SpecManager
 
 
 class SimulationError(QVoterAppError):
@@ -68,7 +68,7 @@ class SingleSimulation:
                 arg_list = []
         except KeyError as err:
             raise SimulationError(
-                f"The {err} parameter is required for {self.net_type} graphs"
+                f"The {err} parameter is required for {self.params.net_type} graphs"
             )
         return "," + ",".join(map(str, arg_list))
 

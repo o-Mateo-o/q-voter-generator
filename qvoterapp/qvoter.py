@@ -2,8 +2,7 @@
 import logging
 from argparse import ArgumentParser
 
-from pyhelpers.setapp import QVoterAppError, set_julia, set_logger
-from pyhelpers.simul import SimulCollector
+from pyhelpers import QVoterAppError, SimulCollector, set_julia, set_logger
 
 SPEC_PATH = "plot.spec.json"
 DATA_PATH = "data.xml"

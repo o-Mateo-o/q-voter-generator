@@ -134,7 +134,6 @@ class DataManager:
             pd.merge(full_data_req, existing_data, how="outer", indicator=True)
             .query('_merge=="left_only"')
             .drop("_merge", axis=1)
-            .sample(frac=1) # randomly reorder to evenly distribute for simuls
             .reset_index(drop=True)
             .assign(avg_exit_time=np.nan, exit_proba=np.nan) # add result cols
         )

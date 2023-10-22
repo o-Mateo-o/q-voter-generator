@@ -41,8 +41,12 @@ def set_julia() -> Any:
     from julia import Pkg as JuliaPkg
 
     logging.info("Preparing Julia...")
+    # project
     JuliaPkg.activate(".")
+    # packages
     JuliaMain.include("qvoterapp/packages.jl")
+    JuliaMain.eval("ensure_packages()")
+    # simulation module
     JuliaMain.include("qvoterapp/jlhelpers/NetSimul.jl")
     JuliaMain.eval("using .NetSimul")
     logging.info("Julia NetSimul module ready!")
