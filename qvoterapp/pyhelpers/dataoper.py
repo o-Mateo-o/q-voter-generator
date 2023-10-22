@@ -1,4 +1,5 @@
 import json
+import logging
 from itertools import product
 from pathlib import Path
 from typing import Any, Dict, Union
@@ -26,7 +27,10 @@ class SpecManager:
         if not spec_path.is_file():
             raise FileManagementError(f"Config file '{spec_path}' doesn't exist")
         with open(spec_path, "r") as f:
-            plot_scpec = json.load(f)
+            try:
+                plot_scpec = json.load(f)
+            except json.JSONDecodeError:
+                raise FileManagementError("Cannot decode JSON spec file")
         return plot_scpec
 
     @staticmethod
@@ -63,6 +67,9 @@ class SpecManager:
         return parsed_val
 
     def _parse_part(self, part_spec: Dict[str, Any]) -> pd.DataFrame:
+        pass
+
+    def _parse_part_OLD(self, part_spec: Dict[str, Any]) -> pd.DataFrame:
         # general
         mc_runs = [part_spec.get("method.mc_runs")]  # can be blank
         # net
@@ -130,13 +137,18 @@ class DataManager:
                 for col in full_data_req.columns.difference(existing_data.columns)
             }
         )[full_data_req.columns]
-        full_data_req_prcsd = (
-            pd.merge(full_data_req, existing_data, how="outer", indicator=True)
-            .query('_merge=="left_only"')
-            .drop("_merge", axis=1)
-            .reset_index(drop=True)
-            .assign(avg_exit_time=np.nan, exit_proba=np.nan) # add result cols
-        )
+        try:
+            full_data_req_prcsd = (
+                pd.merge(full_data_req, existing_data, how="outer", indicator=True)
+                .query('_merge=="left_only"')
+                .drop("_merge", axis=1)
+                .reset_index(drop=True)
+                .assign(avg_exit_time=np.nan, exit_proba=np.nan)  # add result cols
+            )
+        except ValueError:
+            raise FileManagementError(
+                "Existing data dameged. Cannot compare it the plot specification requirements"
+            )
         return full_data_req_prcsd
 
     def update_file(self, new_data_chunk: pd.DataFrame) -> None:

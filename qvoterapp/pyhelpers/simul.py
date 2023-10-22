@@ -1,21 +1,23 @@
 import logging
 from multiprocessing.pool import ThreadPool
+from pathlib import Path
 from typing import Any
 
 import numpy as np
+import pandas as pd
 from numpy.typing import NDArray
-from pathlib import Path
-from pyhelpers.setapp import QVoterAppError
 from pyhelpers.dataoper import DataManager, SpecManager
+from pyhelpers.setapp import QVoterAppError
 
 
 class SimulationError(QVoterAppError):
     ...
 
 
-class SystemParams:
+class SimulParams:
     def __init__(
         self,
+        mc_runs: int,
         x: float,
         q: int,
         eps: float,
@@ -23,12 +25,64 @@ class SystemParams:
         net_type: str,
         **net_params,
     ) -> None:
+        self.mc_runs: int = mc_runs
         self.x: int = x
         self.q: int = q
         self.eps: float = eps
         self.size: int = size
         self.net_type: str = net_type
         self.net_params: dict = net_params
+
+    def parse_param(self, param: Any, expected_type: str) -> Any:
+        # ! stick to the `./models.md` guidelines
+        # ! net_params are the other than size args
+        if expected_type == "number":
+            if not isinstance(param, int):
+                raise SimulationError(f"Parameter {param} must be numeric")
+            if param < 0:
+                raise SimulationError(f"Parameter {param} must be positive")
+        elif expected_type == "float_prop":
+            if not isinstance(param, (float, int)):
+                raise SimulationError(f"Parameter {param} must be numeric")
+            if param < 0 or param > 1:
+                raise SimulationError(f"Parameter {param} must be in [0, 1] range")
+        elif expected_type == "net_key":
+            if param not in ("BA", "WS", "C"):
+                raise SimulationError(f"Net type {param} is not allowed")
+        else:
+            raise SimulationError(f"Unknown parameter type '{expected_type}'")
+        return param
+
+    @property
+    def net_params_frmtd(self) -> str:
+        # ! stick to the `./models.md` guidelines
+        # ! net_params are the other than size args
+        try:
+            if self.net_type == "BA":
+                arg_list = [self.net_params["k"]]
+            if self.net_type == "WS":
+                arg_list = [self.net_params["k"], self.net_params["beta"]]
+            if self.net_type == "C":
+                arg_list = []
+        except KeyError as err:
+            raise SimulationError(
+                f"The {err} parameter is required for {self.net_type} graphs"
+            )
+        return "," + ",".join(map(str, arg_list))
+
+    def to_dict(self, formatted: bool = False) -> dict:
+        common_dict_part = {
+            "x": self.x,
+            "net_type": self.net_type,
+            "M": self.mc_runs,
+            "q": self.q,
+            "eps": self.eps,
+            "N": self.size,
+        }
+        if formatted:
+            return {**common_dict_part, "net_params": self.net_params_frmtd}
+        else:
+            return {**common_dict_part, **self.net_params}
 
     def __str__(self) -> str:
         net_params_frmtd = ",".join(
@@ -38,7 +92,8 @@ class SystemParams:
             ]
         )
         raw_string = f"""q-voter system for {self.net_type}({net_params_frmtd}) network
-            of size N={self.size} with model params: x={self.x}, q={self.q}, eps={self.eps}"""
+            of size N={self.size} with model params: x={self.x}, q={self.q}, eps={self.eps};
+            (M={self.mc_runs} runs)"""
         return " ".join(raw_string.split())
 
 
@@ -46,41 +101,14 @@ class SingleSimulation:
     def __init__(
         self,
         jl_interpreter: Any,
-        params: SystemParams,
-        mc_runs: int = 1000,
+        simul_params: SimulParams,
     ) -> None:
         self.jl_interpreter = jl_interpreter
-        self.params = params
-        self.mc_runs: int = mc_runs if mc_runs is not None else 1000
-
-    def _pass_net_key(self) -> str:
-        return self.params.net_type
-
-    def _format_net_params(self):
-        # ! stick to the `./models.md` guidelines
-        # ! net_params are the other than size args
-        try:
-            if self.params.net_type == "BA":
-                arg_list = [self.params.net_params["k"]]
-            if self.params.net_type == "WS":
-                arg_list = [self.params.net_params["k"], self.params.net_params["beta"]]
-            if self.params.net_type == "C":
-                arg_list = []
-        except KeyError as err:
-            raise SimulationError(
-                f"The {err} parameter is required for {self.params.net_type} graphs"
-            )
-        return "," + ",".join(map(str, arg_list))
+        self.simul_params = simul_params
 
     def run(self) -> dict:
         jl_statemet = 'examine_q_voter({x}, "{net_type}", {M}, {q}, {eps}, {N}{net_params})'.format(
-            x=self.params.x,
-            net_type=self._pass_net_key(),
-            M=self.mc_runs,
-            q=self.params.q,
-            eps=self.params.eps,
-            N=self.params.size,
-            net_params=self._format_net_params(),
+            **self.simul_params.to_dict(formatted=True)
         )
         exit_time, exit_proba = self.jl_interpreter.eval(jl_statemet)
         return {"avg_exit_time": exit_time, "exit_proba": exit_proba}
@@ -103,16 +131,16 @@ class SimulCollector:
         self.data = self.data_manager.get_working_data(full_data_req)
 
     def _run_one(self, ix: int) -> None:
-        params_dict = self.data.iloc[ix].to_dict()
-        mc_runs = params_dict.pop("mc_runs")
-        system_params = SystemParams(**params_dict)
+        raw_params_dict = self.data.iloc[ix].to_dict()
+        simul_params = SimulParams(**raw_params_dict)
         results = SingleSimulation(
             jl_interpreter=self.jl_interpreter,
-            params=system_params,
-            mc_runs=mc_runs,
+            simul_params=simul_params,
         ).run()
-        self.data.loc[ix, results.keys()] = results.values()
-        logging.info(f"Simulation: {system_params} finished (M={mc_runs})")
+        new_row = {**simul_params.to_dict(), **results}
+        # add results & possibly rewrite the types (it's after SimulParams parsing)
+        self.data.loc[ix, new_row.keys()] = new_row.values() 
+        logging.info(f"Simulation: {simul_params} finished. Results {results}")
 
     def _run_chunk(self, chunk_ixx: NDArray) -> None:
         [self._run_one(ix) for ix in chunk_ixx]
