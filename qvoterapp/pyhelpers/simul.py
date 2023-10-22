@@ -1,5 +1,6 @@
 import logging
 import multiprocessing
+import os
 from multiprocessing import Pool
 from pathlib import Path
 from typing import Any
@@ -169,9 +170,9 @@ class SimulCollector:
         chunk_ixx_list = np.array_split(
             data_indices, data_indices.size / self.chunk_size
         )
-        PROCESSES = 2
+        processes = os.cpu_count()
         multiprocessing.set_start_method("spawn")
         log_julia_pool_init()
-        with Pool(processes=PROCESSES, initializer=import_julia_objects) as pool:
+        with Pool(processes=processes, initializer=import_julia_objects) as pool:
             pool.map(self._run_chunk, chunk_ixx_list)
         logging.info("All the required simulations completed")

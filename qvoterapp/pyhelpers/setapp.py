@@ -37,7 +37,7 @@ def set_logger() -> None:
     log.addHandler(file)
 
 
-def init_julia() -> Any:
+def ensure_julia_env() -> Any:
     from julia import Main, Pkg
 
     logging.info("Ensuring Julia packages...")
