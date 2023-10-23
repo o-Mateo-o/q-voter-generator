@@ -1,6 +1,5 @@
-# Q-voter model generator
-
 ![GitHub last commit](https://img.shields.io/github/last-commit/o-Mateo-o/q-voter-generator)
+# Q-voter model generator
 
 ![Windows](https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)
 [![Licence](https://img.shields.io/github/license/Ileriayo/markdown-badges?style=for-the-badge)](./LICENSE)
