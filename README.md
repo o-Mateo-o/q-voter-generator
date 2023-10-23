@@ -10,10 +10,9 @@
 - [Q-voter model generator](#q-voter-model-generator)
   - [Table of contents](#table-of-contents)
   - [Description](#description)
-    - [Structure](#structure)
   - [Usage](#usage)
     - [Quick guide](#quick-guide)
-    - [Help](#help)
+    - [More option](#more-option)
     - [*One-clicker* execution](#one-clicker-execution)
   - [JSON specification file](#json-specification-file)
     - [Rules](#rules)
@@ -24,6 +23,7 @@
     - [Complete](#complete)
   - [Important notes](#important-notes)
   - [Technologies](#technologies)
+  - [Project structure](#project-structure)
   - [Author](#author)
 
 ## Description
@@ -35,12 +35,6 @@ Just specify the required plots in a JSON file, open the app and forget about th
 On output you will get the folder with *.pdf* plot files and the *.tex* embeding them along with the descriptions (currently in Polish , but configuration is possible).
 
 [^1]: Details introduced in C. Castellano, M.A. Munoz, R. Pastor-Satorras, [*The non-linear q-voter model*](https://arxiv.org/abs/0907.1775)
-
-### Structure
-
-Main project folder contains the Python requirements (`requirements.txt`), batch scripts described in [usage](#usage) section (`auto-q-voter.bat`, `q-voter.bat`), and the `qvoterapp` application directory. Except for that it will be place for `data.xml` base (**do not modify it!**), input specification files - as `plot.spec.json`, and virtual environment files.
-
-When it comes to `qvoterapp`, it can be divided into Julia module(`jlhelpers`), Python module (`pyhelpers`), standalone Python script (`qvoter.py`) and Julia package provider (`packages.jl`). The external scripts will utilize all of them, so for basic usage you don't have to worry about this part.
 
 ## Usage
 
@@ -57,9 +51,9 @@ When it comes to `qvoterapp`, it can be divided into Julia module(`jlhelpers`), 
 
    If you are using the app for the first time, exectuion might take longer, for it automatically sets up environments and installs packages for both Python and then Julia.
 
-### Help
+### More option
 
-There are some additional script options. You can always see quick help calling
+There are some additional script options. You can check their descrition calling help:
 
    ```batch
    chdir your\path\to\q-voter-generator
@@ -207,6 +201,12 @@ The newest tested versions for stable performance are:
 
 - **Python 3.9.7**
 - **Julia 1.6.1**
+
+## Project structure
+
+Main project folder contains the Python requirements (`requirements.txt`), batch scripts described in [usage](#usage) section (`auto-q-voter.bat`, `q-voter.bat`), and the `qvoterapp` application directory. Except for that it will be place for `data.xml` base (**do not modify it!**), input specification files - as `plot.spec.json`, and virtual environment files.
+
+When it comes to `qvoterapp`, it can be divided into Julia module(`jlhelpers`), Python module (`pyhelpers`), standalone Python script (`qvoter.py`) and Julia package provider (`packages.jl`). The external scripts will utilize all of them, so for basic usage you don't have to worry about this part.
 
 ## Author
 
