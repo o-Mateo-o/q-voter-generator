@@ -18,7 +18,7 @@
   - [JSON specification file](#json-specification-file)
     - [Rules](#rules)
     - [Example](#example)
-  - [Models](#models)
+  - [Networks](#networks)
     - [Barabasi-Albert](#barabasi-albert)
     - [Watts-Strogatz](#watts-strogatz)
     - [Complete](#complete)
@@ -47,7 +47,8 @@ When it comes to `qvoterapp`, it can be divided into Julia module(`jlhelpers`), 
 ### Quick guide
 
 1. Make sure you have installed both **Python** and **Julia** on your device. Stable versions for the app are specied in [technologies](#technologies) section.
-2. Go to the project folder (`q-voter-generator`) and open `q-voter.bat` script. If using **CMD**, type
+2. Create the `plot.spec.json` file sticking to the guidelines from the [JSON specification file](#json-specification-file) section.
+3. Go to the project folder (`q-voter-generator`) and open `q-voter.bat` script. If using **CMD**, type
 
    ```batch
    chdir your\path\to\q-voter-generator
@@ -151,7 +152,7 @@ You can simply copy it to the desktop or anywhere you want and run by double-cli
 }
 ```
 
-## Models
+## Networks
 
 Only the models predefined in [`qvoterapp/jlhelpers/models.jl`](qvoterapp/jlhelpers/models.jl) can be used. In the last definition, there is a dictionary of models' *key names*. Users should also stick to this convention of naming when creating new models.
 
