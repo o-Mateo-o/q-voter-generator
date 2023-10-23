@@ -7,7 +7,24 @@
 
 ## Table of contents
 
-<!-- TODO: add -->
+- [Q-voter model generator](#q-voter-model-generator)
+  - [Table of contents](#table-of-contents)
+  - [Description](#description)
+    - [Structure](#structure)
+  - [Usage](#usage)
+    - [Quick guide](#quick-guide)
+    - [Help](#help)
+    - [*One-clicker* execution](#one-clicker-execution)
+  - [JSON specification file](#json-specification-file)
+    - [Rules](#rules)
+    - [Example](#example)
+  - [Models](#models)
+    - [Barabasi-Albert](#barabasi-albert)
+    - [Watts-Strogatz](#watts-strogatz)
+    - [Complete](#complete)
+  - [Important notes](#important-notes)
+  - [Technologies](#technologies)
+  - [Author](#author)
 
 ## Description
 
@@ -140,7 +157,9 @@ Only the models predefined in [`qvoterapp/jlhelpers/models.jl`](qvoterapp/jlhelp
 
 Existing network models along with their parameters are:
 
-### Barabasi-Albert (*key name*: **BA**, *wiki*: [link](https://en.wikipedia.org/wiki/Barab%C3%A1si%E2%80%93Albert_model))
+### Barabasi-Albert
+
+(*key name*: **BA**, *wiki*: [link](https://en.wikipedia.org/wiki/Barab%C3%A1si%E2%80%93Albert_model))
 
 **WARNING:** in this model, some combination of parameters can generate isolated nodes. To avoid this undesired (for q-voter model) situation it is assumed that `n0 = k`!
 
@@ -150,7 +169,9 @@ Existing network models along with their parameters are:
 
 Order of parameters in the file: `N,k`.
 
-### Watts–Strogatz (*key name*: **WS**, *wiki*: [link](https://en.wikipedia.org/wiki/Watts%E2%80%93Strogatz_model))
+### Watts-Strogatz
+
+(*key name*: **WS**, *wiki*: [link](https://en.wikipedia.org/wiki/Watts%E2%80%93Strogatz_model))
 
 - `N` - number of nodes.
 - `k` - average degree of the node.
@@ -160,7 +181,9 @@ Order of parameters in the file: `N,k,beta`.
 
 This one can create in particular a one-dimensional ring when given `k=2` and `beta=0`.
 
-### Complete (*key name*: **C**, *wiki*: [link](https://en.wikipedia.org/wiki/Complete_graph))
+### Complete
+
+(*key name*: **C**, *wiki*: [link](https://en.wikipedia.org/wiki/Complete_graph))
 
 - `N` - number of nodes.
 
