@@ -16,7 +16,7 @@ if not exist .venv (
     %py% -m venv .venv
     call .venv\Scripts\activate.bat
     %py% -m pip install --upgrade pip
-    %py% -m pip install -r src\requirements.txt
+    %py% -m pip install -r requirements.txt
 ) else (
     call .venv\Scripts\activate.bat
 )

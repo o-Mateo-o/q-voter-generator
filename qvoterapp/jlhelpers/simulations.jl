@@ -36,7 +36,7 @@ For a given set of parameters perform one Monte Carlo step of the simulation
 # Returns
 - `::Array{Int64,1}`: A pair of an exit time and a final state of decision. 
 """
-function simulate_system(net_type::DataType, x::Float64, q::Int64, eps::Float64, N::Int64, args...)::Array{Int64,1}
+function simulate_system(net_type::DataType, x::Float64, q::Int64, eps::Float64, N::Int64, args...)::Array{Float64,1}
     time = 0
     net = net_type(x, N, args...)
     @inbounds @fastmath while abs(sum(net.opinions)) < N
@@ -45,14 +45,15 @@ function simulate_system(net_type::DataType, x::Float64, q::Int64, eps::Float64,
     end
 
     posit_decis = net.opinions[1] == true ? 1 : 0
-    scaled_time = trunc(Int, time / N)
+    scaled_time = time / N
     return [scaled_time, posit_decis]
 end
 
 """
     collect_system_results(x, save_path, net_type, M, q, eps, N, args...)
 For a given set of parameters perform a whole Monte Carlo simulation
-    to find an average decision time and a positive decision probability. 
+    to find an average decision time and a positive decision probability.
+Pass the results with 3-digits precision. 
 # Arguments
 - `x::Float64`: Initial ratio of positive opinions.
 - `save_path::String`: Database file path (relative).
@@ -68,5 +69,5 @@ For a given set of parameters perform a whole Monte Carlo simulation
 function collect_system_results(x::Float64, net_type::DataType, M::Int64, q::Int64, eps::Float64, N::Int64, args...)
     result = [@inbounds @fastmath simulate_system(net_type, x, q, eps, N, args...) for _ = 1:M]
     av_time, p_posit_decis = [mean(hcat(result...)[param_ix, :]) for param_ix in 1:2]
-    return  [av_time, p_posit_decis]
+    return  [round(av_time, digits=3), round(p_posit_decis, digits=3)]
 end
