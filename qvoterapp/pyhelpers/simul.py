@@ -44,7 +44,7 @@ class SimulParams:
                 param = int(param)
             except ValueError:
                 raise SimulationError(f"Parameter {param} must be numeric")
-            if param < 0:
+            if param < 1:
                 raise SimulationError(f"Parameter {param} must be positive")
         elif expected_type == "float_prop":
             try:
