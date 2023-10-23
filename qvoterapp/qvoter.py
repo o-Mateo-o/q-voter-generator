@@ -41,8 +41,10 @@ if __name__ == "__main__":
         spec_path = SPEC_PATH
     # execution
     try:
+        print(f"{Fore.CYAN}\n*** SIMULATING ***{Fore.RESET}")
         SimulCollector(spec_path, DATA_PATH, CHUNK_SIZE).run()
         if not args.only_simulations:
+            print(f"{Fore.CYAN}\n*** PLOTTING ***{Fore.RESET}")
             pass
     except QVoterAppError as err:
         logging.error(f"{err.__class__.__name__}: {err}")

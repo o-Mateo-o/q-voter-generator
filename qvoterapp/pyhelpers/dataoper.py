@@ -172,7 +172,7 @@ class SpecManager:
         ]
         part_req = pd.concat(part_req_chunks, ignore_index=True)
         return part_req
-        # TODO !@ can check if there are the same rows between `all_plot_rel_params`. if so, warn
+        # TODO: check if there are the same rows between `all_plot_rel_params` if so, warn
 
     def parse(self) -> pd.DataFrame:
         part_req_list = []
