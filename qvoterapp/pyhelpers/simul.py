@@ -1,6 +1,7 @@
 import logging
 import multiprocessing
 import os
+from logging.handlers import QueueListener
 from multiprocessing import Pool
 from pathlib import Path
 from typing import Any
@@ -9,7 +10,7 @@ import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 from pyhelpers.dataoper import DataManager, SpecManager
-from pyhelpers.setapp import QVoterAppError, import_julia_objects, log_julia_pool_init
+from pyhelpers.setapp import QVoterAppError, import_julia_objects
 
 
 class SimulationError(QVoterAppError):
@@ -67,14 +68,14 @@ class SimulParams:
     def parse_net_params(self, net_params: dict, net_type: str) -> dict:
         try:
             if net_type == "BA":
-                return {self.parse_param(net_params["k"], "number")}
+                return {"k": self.parse_param(net_params["k"], "number")}
             if net_type == "WS":
                 return {
-                    self.parse_param(net_params["k"], "number"),
-                    self.parse_param(net_params["beta"], "float_prop"),
+                    "k": self.parse_param(net_params["k"], "number"),
+                    "beta": self.parse_param(net_params["beta"], "float_prop"),
                 }
             if net_type == "C":
-                return {}
+                return dict()
         except KeyError as err:
             raise SimulationError(
                 f"The {err} parameter is required for {net_type} graphs"
@@ -117,6 +118,11 @@ class SimulParams:
         return " ".join(raw_string.split())
 
 
+class ResultsDict(dict):
+    def __str__(self) -> str:
+        return ", ".join([f"{key}={val}" for key, val in self.items()])
+
+
 class SingleSimulation:
     def __init__(
         self,
@@ -131,7 +137,7 @@ class SingleSimulation:
             **self.simul_params.to_dict(formatted=True)
         )
         exit_time, exit_proba = Main.eval(jl_statemet)
-        return {"avg_exit_time": exit_time, "exit_proba": exit_proba}
+        return ResultsDict({"avg_exit_time": exit_time, "exit_proba": exit_proba})
 
 
 class SimulCollector:
@@ -149,30 +155,44 @@ class SimulCollector:
     def _run_one(self, ix: int) -> None:
         raw_params_dict = self.data.iloc[ix].to_dict()
         simul_params = SimulParams(**raw_params_dict)
-        results = SingleSimulation(
-            simul_params=simul_params,
-        ).run()
+        results = SingleSimulation(simul_params).run()
         new_row = {**simul_params.to_dict(), **results}
         # add results & possibly rewrite the types (it's after SimulParams parsing)
         self.data.loc[ix, new_row.keys()] = new_row.values()
-        logging.info(f"Simulation: {simul_params} finished. Results {results}")
+        logging.info(f"Simulation: {simul_params} finished. Results: {results}.")
 
     def _run_chunk(self, chunk_ixx: NDArray) -> None:
         [self._run_one(ix) for ix in chunk_ixx]
         self.data_manager.update_file(self.data.iloc[chunk_ixx])
         logging.info(
-            f"Data chunk saved (indices {chunk_ixx.min()}-{chunk_ixx.max()} / {len(self.data)})"
+            f"Data chunk saved ({chunk_ixx.min()+1}-{chunk_ixx.max()+1}/{len(self.data)})"
         )
 
-    def run(self) -> None:
-        logging.info("Running the simulations in a thread pool...")
+    def _run(self) -> None:
         data_indices = self.data.index.to_numpy()
         chunk_ixx_list = np.array_split(
-            data_indices, data_indices.size / self.chunk_size
+            data_indices, np.ceil(data_indices.size / self.chunk_size)
         )
-        processes = os.cpu_count()
+        n_processes = os.cpu_count()
         multiprocessing.set_start_method("spawn")
-        log_julia_pool_init()
-        with Pool(processes=processes, initializer=import_julia_objects) as pool:
+        # logging setup
+        mp_queue = multiprocessing.Queue()
+        queue_listener = QueueListener(mp_queue, *logging.getLogger().handlers)
+        queue_listener.start()
+        # pool creation
+        with Pool(
+            processes=n_processes, initializer=import_julia_objects, initargs=[mp_queue]
+        ) as pool:
+            # log the pids
+            pids = [str(process.pid) for process in multiprocessing.active_children()]
+            logging.info(f"Julia is being activated on processes: {', '.join(pids)}...")
+            # map the simulations
             pool.map(self._run_chunk, chunk_ixx_list)
-        logging.info("All the required simulations completed")
+        queue_listener.stop()
+
+    def run(self) -> None:
+        if self.data.empty:
+            logging.info("No additional data required, hence simulations are skipped.")
+        else:
+            self._run()
+            logging.info("All the required simulations completed!")

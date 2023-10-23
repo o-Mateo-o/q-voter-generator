@@ -12,7 +12,7 @@
         "plot.group": "model.q", // for only one group do not add this row
         // additionally `plot.valscaling` can be added
         // values related to the network
-        "net.name": "BA",
+        "net.net_type": "BA",
         "net.size": 200,  // * single number value type
         "net.k": 1,  // * single number value type
         // method related value
@@ -37,7 +37,7 @@
         "plot.args": "net.size",
         "plot.vals": "exit.time",
         "plot.group": "model.eps",
-        "net.name": "C",
+        "net.net_type": "C",
         "model.x": 0.5,
         "model.q": 4,
         // no eps & size specified before!

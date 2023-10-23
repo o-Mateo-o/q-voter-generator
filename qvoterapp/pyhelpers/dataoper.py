@@ -1,4 +1,5 @@
 import json
+import logging
 from itertools import product
 from pathlib import Path
 from typing import Any, Dict, Union
@@ -66,6 +67,20 @@ class SpecManager:
             )
         return parsed_val
 
+    @staticmethod
+    def _param_cart(param_dict: Dict[str, Any]) -> pd.DataFrame:
+        # get rid of the param key prefixes
+        golden_param_dict = {
+            param_key.split(".")[-1]: param_val
+            for param_key, param_val in param_dict.items()
+        }
+        # find all the possibilites
+        product_df = pd.DataFrame(
+            list(product(*golden_param_dict.values())),
+            columns=list(golden_param_dict.keys()),
+        )
+        return product_df
+
     def _parse_part(self, part_spec: Dict[str, Any]) -> pd.DataFrame:
         # find plot argument and group related keys
         plot_args = part_spec.pop("plot.args")
@@ -73,6 +88,11 @@ class SpecManager:
             plot_group = part_spec.pop("plot.group")
         except KeyError:
             plot_group = None
+        if plot_args == plot_group:
+            raise SpecificationError(
+                "Groupping variable cannot be the one used for arguments"
+            )
+        # both cases - group section exists and not
         if "groups" in part_spec:
             if plot_group is None:
                 raise SpecificationError(
@@ -83,54 +103,76 @@ class SpecManager:
                     "Arguments and groups can't be given both in the 'groups' section and outside of it"
                 )
             groups = part_spec.pop("groups")
+            if (not isinstance(groups, list)) or (not groups):
+                raise SpecificationError(
+                    "existing 'groups' section must contain a non-empty list"
+                )
+            # iterate over groups and add their parameters to lists
+            all_plot_rel_params = []
             for group in groups:
                 group: dict
-                self._process_value(group.pop(plot_args), multiple=True)
-                self._process_value(group.pop(plot_group), multiple=True)
-                # ! if dict, raise warning że coś tam jest a nie powinno
-
-            # ! zrobić słownik wszystkich do wyplucia, z odpowiednim parsowaniem
-            # ! odjąć od słownika te elementy z groupa i arga
-            # ! a następnie collectować
-            # ! na koniec, pozostałe ".net"
+                single_plot_rel_params = {
+                    plot_args: self._process_value(group.pop(plot_args), multiple=True),
+                    plot_group: self._process_value(
+                        group.pop(plot_group), multiple=True
+                    ),
+                }
+                if group:
+                    logging.warning(
+                        "Parser is skipping parameters remaining in some 'group' sections: {group}"
+                    )
+                all_plot_rel_params.append(single_plot_rel_params)
+                covered_mandatory_param_keys = {plot_args, plot_group}
         else:
-            # ! wziąć na multiplu argumenty (warning jeśli jeden) (z popem)
-            # ! jeśli plot_group, to wziąc na multiplu grupy (z popem)
-            # !     i ostrzec warningiem jak pojedyncze ; przeciwnie pominąć
-            # ! zrobić to samo z plującym słownikiem co wyżej, ale pamietać od
-            # ! zależności od groupa
-            pass
-
-    def _parse_part_OLD(self, part_spec: Dict[str, Any]) -> pd.DataFrame:
-        # general
-        mc_runs = [part_spec.get("method.mc_runs")]  # can be blank
-        # net
-        net_type = self._process_value(part_spec.pop("net.name"))
-        size = self._process_value(part_spec.pop("net.size"))
+            # initially prepare only plot arguments
+            single_plot_rel_params = {
+                plot_args: self._process_value(part_spec.pop(plot_args), multiple=True)
+            }
+            covered_mandatory_param_keys = {plot_args}
+            # if grouping variable exists, update the data with it
+            if plot_group is not None:
+                single_plot_rel_params.update(
+                    {
+                        plot_group: self._process_value(
+                            part_spec.pop(plot_group), multiple=True
+                        )
+                    }
+                )
+                covered_mandatory_param_keys.add(plot_group)
+            if any([params.size < 2 for params in single_plot_rel_params.values()]):
+                logging.warning(
+                    "Detected plot arguments or groups series of size 1. Continuing..."
+                )
+            all_plot_rel_params = [single_plot_rel_params]
+        # process the rest of parameters
+        mandatory_param_keys = {
+            "net.net_type",
+            "net.size",
+            "method.mc_runs",
+            "model.x",
+            "model.q",
+            "model.eps",
+        }
+        left_mandatory_param_keys = mandatory_param_keys - covered_mandatory_param_keys
+        left_mandatory_params = {
+            param_key: self._process_value(part_spec.pop(param_key))
+            for param_key in left_mandatory_param_keys
+        }
+        # from the rest of parameters, get the optional net parameters
         net_params = {
             param_key.replace("net.", ""): self._process_value(param_val)
             for param_key, param_val in part_spec.items()
             if "net." in param_key
         }
-        # model
-        x = self._process_value(part_spec["x"])
-        q = self._process_value(part_spec["q"])
-        eps = self._process_value(part_spec["eps"])
-        # "net.N": 200,
-        parsed_values = {
-            "mc_runs": mc_runs,
-            "net_type": net_type,
-            "size": size,
-            **net_params,
-            "x": x,
-            "q": q,
-            "eps": eps,
-        }
-        part_req = pd.DataFrame(
-            list(product(*parsed_values.values())),
-            columns=list(parsed_values.keys()),
-        )
+        non_plot_rel_params = {**left_mandatory_params, **net_params}
+        # get the products and glue the chunks together
+        part_req_chunks = [
+            self._param_cart({**non_plot_rel_params, **plot_rel_params_chunk})
+            for plot_rel_params_chunk in all_plot_rel_params
+        ]
+        part_req = pd.concat(part_req_chunks, ignore_index=True)
         return part_req
+        # TODO !@ can check if there are the same rows between `all_plot_rel_params`. if so, warn
 
     def parse(self) -> pd.DataFrame:
         part_req_list = []
@@ -141,6 +183,10 @@ class SpecManager:
             except KeyError as err:
                 raise SpecificationError(
                     f"Mandatory key {err} is missing somewhere in {plot_name} config"
+                )
+            except SpecificationError as err:
+                raise SpecificationError(
+                    f"The following issue encountered while parsing {plot_name} specification: {err}"
                 )
         full_req = pd.concat(part_req_list, ignore_index=True)
         full_req.drop_duplicates(inplace=True)

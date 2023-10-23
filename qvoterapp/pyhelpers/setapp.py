@@ -1,5 +1,5 @@
 import logging
-import multiprocessing
+from logging.handlers import QueueHandler
 from pathlib import Path
 from typing import Any
 
@@ -47,17 +47,14 @@ def ensure_julia_env() -> Any:
     logging.info("Julia project ready!")
 
 
-def log_julia_pool_init():
-    pids = [process.pid for process in multiprocessing.active_children()]
-    if pids:
-        logging.info(f"Initializing Julia on processes: {', '.join(pids)}...")
-    else:
-        logging.warning("No children process to initialize Julia on")
-
-
-def import_julia_objects():
+def import_julia_objects(q):
     from julia import Main, Pkg
 
     Pkg.activate(".")
     Main.include("qvoterapp/jlhelpers/NetSimul.jl")
     Main.eval("using .NetSimul")
+
+    queue_handler = QueueHandler(q)
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    logger.addHandler(queue_handler)
