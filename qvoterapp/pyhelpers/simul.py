@@ -7,10 +7,9 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-import pandas as pd
 from numpy.typing import NDArray
 from pyhelpers.dataoper import DataManager, SpecManager
-from pyhelpers.setapp import QVoterAppError, import_julia_objects
+from pyhelpers.setapp import QVoterAppError, ensure_julia_env, init_julia_proc
 
 
 class SimulationError(QVoterAppError):
@@ -120,7 +119,7 @@ class SimulParams:
 
 class ResultsDict(dict):
     def __str__(self) -> str:
-        return ", ".join([f"{key}={val}" for key, val in self.items()])
+        return f"T={self['avg_exit_time']}, E={self['exit_proba']}"
 
 
 class SingleSimulation:
@@ -159,13 +158,15 @@ class SimulCollector:
         new_row = {**simul_params.to_dict(), **results}
         # add results & possibly rewrite the types (it's after SimulParams parsing)
         self.data.loc[ix, new_row.keys()] = new_row.values()
-        logging.info(f"Simulation: {simul_params} finished. Results: {results}.")
+        logging.info(
+            f"Simulation #{ix + 1}: {simul_params} finished. Results: {results}."
+        )
 
     def _run_chunk(self, chunk_ixx: NDArray) -> None:
         [self._run_one(ix) for ix in chunk_ixx]
         self.data_manager.update_file(self.data.iloc[chunk_ixx])
         logging.info(
-            f"Data chunk saved ({chunk_ixx.min()+1}-{chunk_ixx.max()+1}/{len(self.data)})"
+            f"--- Data chunk saved (#{chunk_ixx.min()+1}-{chunk_ixx.max()+1}/{len(self.data)})."
         )
 
     def _run(self) -> None:
@@ -181,18 +182,21 @@ class SimulCollector:
         queue_listener.start()
         # pool creation
         with Pool(
-            processes=n_processes, initializer=import_julia_objects, initargs=[mp_queue]
+            processes=n_processes, initializer=init_julia_proc, initargs=[mp_queue]
         ) as pool:
             # log the pids
             pids = [str(process.pid) for process in multiprocessing.active_children()]
-            logging.info(f"Julia is being activated on processes: {', '.join(pids)}...")
+            logging.info(
+                f"Julia is being activated on processes [{', '.join(pids)}]..."
+            )
             # map the simulations
             pool.map(self._run_chunk, chunk_ixx_list)
         queue_listener.stop()
 
     def run(self) -> None:
         if self.data.empty:
-            logging.info("No additional data required, hence simulations are skipped.")
+            logging.info("No additional data required. Skipping simulations.")
         else:
+            ensure_julia_env()
             self._run()
             logging.info("All the required simulations completed!")

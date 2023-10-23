@@ -196,6 +196,7 @@ class SpecManager:
 class DataManager:
     def __init__(self, data_path: Path) -> None:
         self.data_path = data_path
+        self.PRECISION = 3
 
     def get_working_data(self, full_data_req: pd.DataFrame) -> pd.DataFrame:
         # get the existing data
@@ -213,9 +214,15 @@ class DataManager:
         )[full_data_req.columns]
         try:
             full_data_req_prcsd = (
-                pd.merge(full_data_req, existing_data, how="outer", indicator=True)
+                pd.merge(
+                    full_data_req.round(self.PRECISION),
+                    existing_data.round(self.PRECISION),
+                    how="outer",
+                    indicator=True,
+                )
                 .query('_merge=="left_only"')
                 .drop("_merge", axis=1)
+                .drop_duplicates()
                 .reset_index(drop=True)
                 .assign(avg_exit_time=np.nan, exit_proba=np.nan)  # add result cols
             )
@@ -228,7 +235,13 @@ class DataManager:
     def update_file(self, new_data_chunk: pd.DataFrame) -> None:
         if self.data_path.is_file():
             existing_data = pd.read_xml(self.data_path).set_index("index")
-            data = pd.concat([existing_data, new_data_chunk], ignore_index=True)
+            data = pd.concat(
+                [
+                    existing_data.round(self.PRECISION),
+                    new_data_chunk.round(self.PRECISION),
+                ],
+                ignore_index=True,
+            )
         else:
             data = new_data_chunk
 

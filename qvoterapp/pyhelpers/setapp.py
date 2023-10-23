@@ -17,7 +17,7 @@ def set_logger() -> None:
     formatter = ColoredFormatter(
         "%(log_color)s%(message)s%(reset)s",
         log_colors={
-            "DEBUG": "cyan",
+            "DEBUG": "purple",
             "INFO": "white",
             "WARNING": "yellow",
             "ERROR": "red",
@@ -33,7 +33,7 @@ def set_logger() -> None:
     # add handlers
     log = logging.getLogger()
     log.addHandler(stream)
-    logging.info(f"All the logs are available in `{LOG_FILE}` file")
+    logging.info(f"All the logs are available in '{LOG_FILE}' file.")
     log.addHandler(file)
 
 
@@ -47,7 +47,7 @@ def ensure_julia_env() -> Any:
     logging.info("Julia project ready!")
 
 
-def import_julia_objects(q):
+def init_julia_proc(q):
     from julia import Main, Pkg
 
     Pkg.activate(".")

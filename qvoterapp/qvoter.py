@@ -2,7 +2,8 @@
 import logging
 from argparse import ArgumentParser
 
-from pyhelpers import QVoterAppError, SimulCollector, ensure_julia_env, set_logger
+from pyhelpers import QVoterAppError, SimulCollector, set_logger
+from colorama import Fore
 
 SPEC_PATH = "plot.spec.json"
 DATA_PATH = "data.xml"
@@ -27,15 +28,18 @@ parser.add_argument(
 
 if __name__ == "__main__":
     args = parser.parse_args()
-    print("Welcome to the q-voter exit time and exit probability simulation app :)")
+    # hello message
+    hello_msg = (
+        "Welcome to the q-voter exit time & exit probability simulation app :)"
+    )
+    print(f"{Fore.CYAN}\n{hello_msg}\n{'-' * len(hello_msg)}\n{Fore.RESET}")
+    # logger and the parameters
     set_logger()
-    ensure_julia_env()
-
     if args.plot_spec:
         spec_path = args.plot_spec
     else:
         spec_path = SPEC_PATH
-
+    # execution
     try:
         SimulCollector(spec_path, DATA_PATH, CHUNK_SIZE).run()
         if not args.only_simulations:
