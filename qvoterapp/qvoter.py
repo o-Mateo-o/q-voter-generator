@@ -85,7 +85,7 @@ if __name__ == "__main__":
     except QVoterAppError as err:
         logging.error(f"{err.__class__.__name__}: {err}")
     except Exception as err:
-        logging.error(f"ERROR: {err}")
+        logging.error(err, exc_info=True)
     else:
         print(f"{Fore.LIGHTGREEN_EX}\nExecution successful!{Fore.RESET}")
     finally:
