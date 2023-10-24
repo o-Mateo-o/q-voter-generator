@@ -3,11 +3,12 @@ import logging
 import warnings
 from argparse import ArgumentParser
 
-from colorama import Fore, Back
+from colorama import Back, Fore
 from pyhelpers import (
     PlotCreator,
     QVoterAppError,
     SimulCollector,
+    open_out_dir,
     open_spec_file,
     set_logger,
 )
@@ -50,7 +51,7 @@ parser.add_argument(
 
 def main(args) -> None:
     hello_msg = "Welcome to the q-voter exit time & exit probability simulation app!"
-    print(f"{Fore.CYAN}\n{hello_msg}\n{'-' * len(hello_msg)}\n{Fore.RESET}")
+    print(f"{Fore.CYAN}\n{hello_msg}\n{'-' * len(hello_msg)}{Fore.RESET}")
     open_spec_file(args.plot_spec)  # it still asks if you want to open
     _enter_str = f"{Back.CYAN}{Fore.BLACK}ENTER{Fore.CYAN}{Back.RESET}"
     input(
@@ -70,7 +71,11 @@ def main(args) -> None:
     ## plotting
     if not args.only_simulations:
         print(f"{Fore.CYAN}\n*** PLOTTING ***{Fore.RESET}")
-        PlotCreator(str_spec_path=args.plot_spec, str_data_path=args.data_storage).run()
+        plot_creator = PlotCreator(
+            str_spec_path=args.plot_spec, str_data_path=args.data_storage
+        )
+        plot_creator.run()
+        open_out_dir(plot_creator.out_dir)
 
 
 if __name__ == "__main__":
@@ -79,6 +84,9 @@ if __name__ == "__main__":
         main(args)
     except QVoterAppError as err:
         logging.error(f"{err.__class__.__name__}: {err}")
+    except Exception as err:
+        logging.error(f"ERROR: {err}")
     else:
         print(f"{Fore.LIGHTGREEN_EX}\nExecution successful!{Fore.RESET}")
-    input()
+    finally:
+        input()

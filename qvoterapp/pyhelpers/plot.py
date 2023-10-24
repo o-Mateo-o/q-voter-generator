@@ -1,22 +1,89 @@
+import logging
+import os
+from datetime import datetime
 from pathlib import Path
 from typing import Dict
 
 import pandas as pd
+import seaborn as sns
+from matplotlib import pyplot as plt
 from pyhelpers.dataoper import DataManager, SpecManager
 
 
 class PlotCreator:
     def __init__(self, str_spec_path: str, str_data_path: str) -> None:
-        self._data_manager = DataManager(Path(str_data_path))
+        data_manager = DataManager(Path(str_data_path))
         spec_manager = SpecManager(Path(str_spec_path))
         data_reqs = spec_manager.parse_req(plot_specific=True)
         visual_specs = spec_manager.parse_visual()
-        data = self._data_manager.get_plotting_data(data_reqs)
-        # self.data: Dict[pd.DataFrame] --- słownik wspólny dla visual_spec i data pod jednymi kluczami
+        data = data_manager.get_plotting_data(data_reqs)
+        self.assets = {
+            plot_name: {
+                "data": plot_data,
+                "visual_specs": visual_specs[plot_name],
+            }
+            for plot_name, plot_data in data.items()
+        }
+        self.out_dir = self._provide_dir()
+        self.plot_translator = {
+            "mc_runs": "$M$",
+            "net_type": "Model grafu",
+            "q": "$q$",
+            "x": "$x$",
+            "size": "$N$",
+            "eps": "$\\varepsilon$",
+            "avg_exit_time": "$T$",
+            "exit_proba": "$E$",
+            "k": "$k$",
+            "beta": "$\\beta$",
+        }
+        self.desc_translator = {
+            "mc_runs": "liczba uśrednień Monte Carlo",
+            "net_type": "model grafu",
+            "q": "liczba $q$ sąsiadów",
+            "x": "początkowa proporcja opinii",
+            "size": "rozmiar",
+            "eps": "szum",
+            "avg_exit_time": "średni czas wyjścia",
+            "exit_proba": "prawdopodobieństwo wyjścia",
+        }
         # ! later, when preparing plot desc, get the first row of data but prev:
         # ! -- select only non-vals/args/group(cb null) columns
         # ! -- select non-null columns
         # ! for some dict - if val not given, assign '?'
 
+    def _provide_dir(self) -> Path:
+        timestamp = datetime.now().strftime("%y%m%d_%H%M%S")
+        out_dir = Path("output", f"plots_{timestamp}")
+        if not out_dir.is_dir():
+            os.makedirs(Path(out_dir, "images")) # to also have sub-folder for images
+        return out_dir
+
+    def _single_plot(self, plot_name: str):
+        fig, ax = plt.subplots()
+        args = self.assets[plot_name]["visual_specs"]["args"]
+        vals = self.assets[plot_name]["visual_specs"]["vals"]
+        group = self.assets[plot_name]["visual_specs"]["group"]
+        sns.lineplot(
+            data=self.assets[plot_name]["data"],
+            x=args,
+            y=vals,
+            hue=group,
+            # markers=None,
+            # style=None,
+            ax=ax,
+        )
+        ax.set_xscale(self.assets[plot_name]["visual_specs"]["x_ax_scale"])
+        ax.set_yscale(self.assets[plot_name]["visual_specs"]["y_ax_scale"])
+        ax.set_xlabel(f"{self.plot_translator[args]}")
+        ax.set_ylabel(f"{self.plot_translator[vals]}({self.plot_translator[args]})")
+        if group:
+            ax.legend(title=self.plot_translator[group])
+        filename = f"{plot_name}.pdf"
+        plt.savefig(Path(self.out_dir, "images", filename))
+
     def run(self) -> None:
-        pass
+        logging.info(f'Saving plots to "{self.out_dir.absolute()}"...')
+        for plot_name in self.assets:
+            self._single_plot(plot_name)
+            logging.info(f"Plot '{plot_name}' created and saved.")

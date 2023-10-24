@@ -68,10 +68,13 @@ class SpecManager:
         return parsed_val
 
     @staticmethod
-    def _param_cart(param_dict: Dict[str, Any]) -> pd.DataFrame:
+    def _drop_param_prefix(param: str) -> str:
+        return param.split(".")[-1]
+
+    def _param_cart(self, param_dict: Dict[str, Any]) -> pd.DataFrame:
         # get rid of the param key prefixes
         golden_param_dict = {
-            param_key.split(".")[-1]: param_val
+            self._drop_param_prefix(param_key): param_val
             for param_key, param_val in param_dict.items()
         }
         # find all the possibilites
@@ -218,8 +221,8 @@ class SpecManager:
                 f"Axis scaling must be chosen from {accepted_ax_scales} list"
             )
         return {
-            "arg": plot_args,
-            "group": plot_group,
+            "args": self._drop_param_prefix(plot_args),
+            "group": self._drop_param_prefix(plot_group),
             "vals": plot_vals,
             "a_scaling": None,  #!
             "v_scaling": None,  #!

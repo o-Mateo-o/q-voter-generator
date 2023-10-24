@@ -68,9 +68,22 @@ def open_spec_file(str_spec_path: str) -> None:
                 pass
         except OSError:
             raise QVoterAppError(f"Spec file {str_spec_path} cannot be created")
-    open_flag = input("Do you want to open the plot specification file? (y/n)\n> ")
+    open_flag = input("\nDo you want to open the plot specification file? (y/n)\n> ")
+    if not open_flag:
+        print("[n]")
     if open_flag == "y":
         print("Opening the file. Close it when it is ready.")
         os.system(f"notepad.exe {str_spec_path}")
     else:
         print("As you wish sir/madam. I will NOT open it for you!")
+
+def open_out_dir(out_dir: Path) -> None:
+    open_flag = input("\nDo you want to open the output folder? (y/n)\n> ")
+    if not open_flag:
+        print("[n]")
+    if open_flag == "y":
+        if out_dir.is_dir():
+            os.system(f"explorer.exe {out_dir}")
+        else:
+            raise QVoterAppError("Cannot open output folder. Try to do it manually.")
+        
