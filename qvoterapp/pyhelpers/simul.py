@@ -154,12 +154,15 @@ class SimulCollector:
     def _run_one(self, ix: int) -> None:
         raw_params_dict = self.data.iloc[ix].to_dict()
         simul_params = SimulParams(**raw_params_dict)
+        logging.info(
+            f"Starting simulation #{ix + 1}: {simul_params}."
+        )
         results = SingleSimulation(simul_params).run()
         new_row = {**simul_params.to_dict(), **results}
         # add results & possibly rewrite the types (it's after SimulParams parsing)
         self.data.loc[ix, new_row.keys()] = new_row.values()
         logging.info(
-            f"Simulation #{ix + 1}: {simul_params} finished. Results: {results}."
+            f"Simulation #{ix + 1} finished. Results: {results}."
         )
 
     def _run_chunk(self, chunk_ixx: NDArray) -> None:

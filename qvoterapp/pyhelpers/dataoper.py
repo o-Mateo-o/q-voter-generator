@@ -147,6 +147,8 @@ class SpecManager:
         # process the rest of parameters
         mandatory_param_keys = {
             "net.net_type",
+
+
             "net.size",
             "method.mc_runs",
             "model.x",
@@ -182,7 +184,7 @@ class SpecManager:
                 part_req_list.append(part_req)
             except KeyError as err:
                 raise SpecificationError(
-                    f"Mandatory key {err} is missing somewhere in {plot_name} config"
+                    f"Some key {err} is required but cannot be found in {plot_name} config"
                 )
             except SpecificationError as err:
                 raise SpecificationError(
