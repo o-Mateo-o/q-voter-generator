@@ -150,7 +150,7 @@ class SimulCollector:
         self.chunk_size: int = chunk_size
         self._data_manager = DataManager(Path(str_data_path))
         full_data_req = SpecManager(Path(str_spec_path)).parse_req()
-        self.data: pd.DataFrame = self.data_manager.get_working_data(full_data_req)
+        self.data: pd.DataFrame = self._data_manager.get_working_data(full_data_req)
 
     def _run_one(self, ix: int) -> None:
         raw_params_dict = self.data.iloc[ix].to_dict()
