@@ -55,7 +55,7 @@ def main(args) -> None:
     open_spec_file(args.plot_spec)  # it still asks if you want to open
     _enter_str = f"{Back.CYAN}{Fore.BLACK}ENTER{Fore.CYAN}{Back.RESET}"
     input(
-        f"{Fore.CYAN}\nAre you ready for some magic? Press {_enter_str} if so ;){Fore.RESET}"
+        f"{Fore.CYAN}\nAre you ready for some magic? Press {_enter_str} if so!{Fore.RESET}"
     )
     # logger and the parameters
     warnings.filterwarnings("ignore")

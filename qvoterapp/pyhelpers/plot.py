@@ -56,11 +56,11 @@ class PlotCreator:
         timestamp = datetime.now().strftime("%y%m%d_%H%M%S")
         out_dir = Path("output", f"plots_{timestamp}")
         if not out_dir.is_dir():
-            os.makedirs(Path(out_dir, "images")) # to also have sub-folder for images
+            os.makedirs(Path(out_dir, "images"))  # to also have sub-folder for images
         return out_dir
 
     def _single_plot(self, plot_name: str):
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(6, 4))
         args = self.assets[plot_name]["visual_specs"]["args"]
         vals = self.assets[plot_name]["visual_specs"]["vals"]
         group = self.assets[plot_name]["visual_specs"]["group"]
@@ -69,21 +69,39 @@ class PlotCreator:
             x=args,
             y=vals,
             hue=group,
-            # markers=None,
-            # style=None,
+            palette=sns.color_palette("tab10"),
+            marker="o",
+            linewidth=1,
+            linestyle="dashed",
             ax=ax,
         )
         ax.set_xscale(self.assets[plot_name]["visual_specs"]["x_ax_scale"])
         ax.set_yscale(self.assets[plot_name]["visual_specs"]["y_ax_scale"])
         ax.set_xlabel(f"{self.plot_translator[args]}")
         ax.set_ylabel(f"{self.plot_translator[vals]}({self.plot_translator[args]})")
+        ax.grid(visible=True, alpha=0.2)
+
         if group:
-            ax.legend(title=self.plot_translator[group])
+            lgd = ax.legend(
+                title=self.plot_translator[group],
+                loc="center left",
+                bbox_to_anchor=(1, 0.5),
+            )
+        else:
+            lgd = ax.legend().set_visible(False)
+        bea = (lgd,) if lgd else tuple()
+
         filename = f"{plot_name}.pdf"
-        plt.savefig(Path(self.out_dir, "images", filename))
+        plt.savefig(
+            Path(self.out_dir, "images", filename),
+            bbox_extra_artists=bea,
+            bbox_inches="tight",
+        )
 
     def run(self) -> None:
-        logging.info(f'Saving plots to "{self.out_dir.absolute()}"...')
+        logging.info(
+            f'Generating plots. They will be saved to "{self.out_dir.absolute()}"...'
+        )
         for plot_name in self.assets:
             self._single_plot(plot_name)
             logging.info(f"Plot '{plot_name}' created and saved.")
