@@ -36,6 +36,13 @@
 
 This app serves as a handy tool to create **exit time** and **exit probability** plots for **$q$-voter model**[^1] on different parameter sets, including networks. It comes with a predefined set of graphs and an automatically managed, efficient simulating system.
 
+Why it is powerful?
+
+- It provides super **simple interaction**, auto simulations and plotting.
+- **Data storage and management**, allowing to reuse the simulation results.
+
+![image](readme_image.png)
+
 Just specify the required plots in a JSON file, open the app, and forget about the other tedious steps!
 
 On output, you will get the folder with *.pdf* plot files and the *.tex* embedding them along with the descriptions (currently in Polish, but configuration is possible).

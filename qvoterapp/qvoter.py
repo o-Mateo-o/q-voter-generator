@@ -48,9 +48,10 @@ parser.add_argument(
 )
 
 def main(args) -> None:
-    hello_msg = "Welcome to the q-voter exit time & exit probability simulation app :)"
+    hello_msg = "Welcome to the q-voter exit time & exit probability simulation app!"
     print(f"{Fore.CYAN}\n{hello_msg}\n{'-' * len(hello_msg)}\n{Fore.RESET}")
     open_spec_file(args.plot_spec) # it still asks if you want to open
+    input(f"{Fore.CYAN}\nAre you ready for some magic? Press ENTER if so ;){Fore.RESET}")
     # logger and the parameters
     warnings.filterwarnings("ignore")
     set_logger()

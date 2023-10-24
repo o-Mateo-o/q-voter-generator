@@ -74,4 +74,3 @@ def open_spec_file(str_spec_path: str) -> None:
         os.system(f"notepad.exe {str_spec_path}")
     else:
         print("As you wish sir/madam. I will NOT open it for you!")
-    input("Are you readyyyy? (Press ENTER if so)")
