@@ -176,7 +176,7 @@ class SpecManager:
 
     def parse_req(
         self, plot_specific: bool = False
-    ) -> Union[pd.DataFrame, Dict[pd.Dataframe]]:
+    ) -> Union[pd.DataFrame, Dict[str, pd.DataFrame]]:
         # ! it takes care of the data quality as well,
         # ! so validates plot arg/group vs other available params relations
         part_req_dict = dict()
@@ -310,7 +310,7 @@ class DataManager:
             raise FileManagementError("Some values required for plotting are not given")
         return data_selection
 
-    def get_plotting_data(self, plot_reqs: Dict[pd.DataFrame]) -> Dict[pd.DataFrame]:
+    def get_plotting_data(self, plot_reqs: Dict[str, pd.DataFrame]) -> Dict[str, pd.DataFrame]:
         if self.data_path.is_file():
             available_data = self._read_file()
         else:
