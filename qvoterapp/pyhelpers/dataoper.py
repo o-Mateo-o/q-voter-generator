@@ -82,6 +82,7 @@ class SpecManager:
         return product_df
 
     def _parse_req_part(self, part_spec: Dict[str, Any]) -> pd.DataFrame:
+        part_spec = part_spec.copy()
         # find plot argument and group related keys
         plot_args = part_spec.pop("plot.args")
         try:
@@ -201,15 +202,16 @@ class SpecManager:
             return full_req
 
     def _parse_visual_part(self, part_spec: Dict[str, Any]) -> dict:
+        part_spec = part_spec.copy()
         plot_args = part_spec.pop("plot.args")
         plot_group = part_spec.get("plot.group")
         plot_vals = part_spec.pop("plot.vals")
         if plot_vals not in ("exit_proba", "avg_exit_time"):
             raise SpecificationError(f"Values {plot_vals} is an unknown measure")
         # !TODO!: plot_vals_scaling = (None,)
-        desc_info = part_spec.get("y_ax_scale", "")
-        x_ax_scale = part_spec.get("x_ax_scale", "linear")
-        y_ax_scale = part_spec.get("y_ax_scale", "linear")
+        desc_info = part_spec.get("plot.desc_info", "")
+        x_ax_scale = part_spec.get("plot.x_ax_scale", "linear")
+        y_ax_scale = part_spec.get("plot.y_ax_scale", "linear")
         accepted_ax_scales = ("linear", "log")
         if x_ax_scale not in accepted_ax_scales or x_ax_scale not in accepted_ax_scales:
             raise SpecificationError(
@@ -293,14 +295,17 @@ class DataManager:
             )
         return full_data_req_prcsd
 
-    @staticmethod
     def _req_add_results(
-        req: pd.DataFrame, available_data: pd.DataFrame
+        self, req: pd.DataFrame, available_data: pd.DataFrame
     ) -> pd.DataFrame:
         cols = req.columns.append(pd.Index(["avg_exit_time", "exit_proba"]))
         merged_data = pd.merge(
-            available_data, req, how="outer", indicator=True
+            available_data.round(self.PRECISION),
+            req.round(self.PRECISION),
+            how="outer",
+            indicator=True,
         )
+        print(merged_data)
         if not merged_data.query('_merge=="right_only"').empty:
             raise FileManagementError(
                 "Data set for plots is not complete. Try to resimulate..."
@@ -310,7 +315,9 @@ class DataManager:
             raise FileManagementError("Some values required for plotting are not given")
         return data_selection
 
-    def get_plotting_data(self, plot_reqs: Dict[str, pd.DataFrame]) -> Dict[str, pd.DataFrame]:
+    def get_plotting_data(
+        self, plot_reqs: Dict[str, pd.DataFrame]
+    ) -> Dict[str, pd.DataFrame]:
         if self.data_path.is_file():
             available_data = self._read_file()
         else:

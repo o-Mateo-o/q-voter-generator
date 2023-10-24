@@ -95,10 +95,10 @@ class SimulParams:
         common_dict_part = {
             "x": self.x,
             "net_type": self.net_type,
-            "M": self.mc_runs,
+            "mc_runs": self.mc_runs,
             "q": self.q,
             "eps": self.eps,
-            "N": self.size,
+            "size": self.size,
         }
         if formatted:
             return {**common_dict_part, "net_params": self.net_params_julia}
@@ -133,7 +133,7 @@ class SingleSimulation:
     def run(self) -> dict:
         from julia import Main
 
-        jl_statemet = 'examine_q_voter({x}, "{net_type}", {M}, {q}, {eps}, {N}{net_params})'.format(
+        jl_statemet = 'examine_q_voter({x}, "{net_type}", {mc_runs}, {q}, {eps}, {size}{net_params})'.format(
             **self.simul_params.to_dict(formatted=True)
         )
         exit_time, exit_proba = Main.eval(jl_statemet)
