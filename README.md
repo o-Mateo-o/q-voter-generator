@@ -86,7 +86,7 @@ Inside the sub-dictionary, you can pass parameters. Some of them are required, o
 
 - `"plot.args"` (*required*) - arguments on the plot. It must be the key of one of the other parameters (net or model).
 - `"plot.vals"` (*required*) - values type on the plot:
-  - `"exit_time"` for average exit time,
+  - `"avg_exit_time"` for average exit time,
   - `"exit_proba"` for exit probability.
 - `"plot.group"` (*optional*) - parameter indicating plot series. It must be the key of one of the other parameters (net or model).
 - `"plot.desc_info"` (*optional*) - additional text info added to the plot description.
@@ -162,7 +162,7 @@ Here is the example specification dictionary with some comments. You can compare
     # SECOND PLOT
     "secondSamplePlot": {
         "plot.args": "net.size",
-        "plot.vals": "exit_time",
+        "plot.vals": "avg_exit_time",
         "plot.group": "model.eps",
         "net.net_type": "C",
         "model.x": 0.5,
