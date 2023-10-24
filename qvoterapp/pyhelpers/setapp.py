@@ -2,6 +2,7 @@ import logging
 from logging.handlers import QueueHandler
 from pathlib import Path
 from typing import Any
+import os
 
 from colorlog import ColoredFormatter
 
@@ -58,3 +59,19 @@ def init_julia_proc(q):
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
     logger.addHandler(queue_handler)
+
+
+def open_spec_file(str_spec_path: str) -> None:
+    if not Path(str_spec_path).is_file():
+        try:
+            with open(str_spec_path, "w"):
+                pass
+        except OSError:
+            raise QVoterAppError(f"Spec file {str_spec_path} cannot be created")
+    open_flag = input("Do you want to open the plot specification file? (y/n)\n")
+    if open_flag == "y":
+        print("Opening the file. Close it when it is ready.")
+        os.system(f"notepad.exe {str_spec_path}")
+    else:
+        print("As you wish sir/madam. I will NOT open it for you!")
+    input("Are you readyyyy? (Press ENTER if so)")

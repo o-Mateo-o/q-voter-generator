@@ -4,7 +4,13 @@ import warnings
 from argparse import ArgumentParser
 
 from colorama import Fore
-from pyhelpers import PlotCreator, QVoterAppError, SimulCollector, set_logger
+from pyhelpers import (
+    PlotCreator,
+    QVoterAppError,
+    SimulCollector,
+    open_spec_file,
+    set_logger,
+)
 
 # constants stored by the argparser:
 # * str_spec_path = "plot.spec.json"
@@ -41,30 +47,33 @@ parser.add_argument(
     help="approximated chunks size (number of simulations) for distrubuted computing",
 )
 
-if __name__ == "__main__":
-    args = parser.parse_args()
-    # hello message
+def main(args) -> None:
     hello_msg = "Welcome to the q-voter exit time & exit probability simulation app :)"
     print(f"{Fore.CYAN}\n{hello_msg}\n{'-' * len(hello_msg)}\n{Fore.RESET}")
+    open_spec_file(args.plot_spec) # it still asks if you want to open
     # logger and the parameters
     warnings.filterwarnings("ignore")
     set_logger()
     # execution
-    try:
-        ## simulation
-        print(f"{Fore.CYAN}\n*** SIMULATING ***{Fore.RESET}")
-        SimulCollector(
-            str_spec_path=args.plot_spec,
-            str_data_path=args.data_storage,
-            chunk_size=args.chunk_size,
+    ## simulation
+    print(f"{Fore.CYAN}\n*** SIMULATING ***{Fore.RESET}")
+    SimulCollector(
+        str_spec_path=args.plot_spec,
+        str_data_path=args.data_storage,
+        chunk_size=args.chunk_size,
+    ).run()
+    ## plotting
+    if not args.only_simulations:
+        print(f"{Fore.CYAN}\n*** PLOTTING ***{Fore.RESET}")
+        PlotCreator(
+            str_spec_path=args.plot_spec, str_data_path=args.data_storage
         ).run()
-        ## plotting
-        if not args.only_simulations:
-            print(f"{Fore.CYAN}\n*** PLOTTING ***{Fore.RESET}")
-            PlotCreator(
-                str_spec_path=args.plot_spec, str_data_path=args.data_storage
-            ).run()
-    # error/success messages
+    
+
+if __name__ == "__main__":
+    args = parser.parse_args()
+    try:
+        main(args)
     except QVoterAppError as err:
         logging.error(f"{err.__class__.__name__}: {err}")
     else:

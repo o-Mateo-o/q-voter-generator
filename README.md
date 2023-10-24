@@ -47,17 +47,18 @@ On output, you will get the folder with *.pdf* plot files and the *.tex* embeddi
 ### Quick guide
 
 1. Make sure you have installed both **Python** and **Julia** on your device. The stable versions used by the app are specified in the [technologies](#technologies) section.
-2. Create the `plot.spec.json` file sticking to the guidelines from the [JSON specification file](#json-specification-file) section.
-3. Go to the project folder (`q-voter-generator`) and open `q-voter.bat` script. If using **CMD**, type
+2. Open the `q-voter.bat` script. If using **CMD**, type
 
    ```batch
    chdir your\path\to\q-voter-generator
    q-voter.bat
    ```
 
-   If you are using the app for the first time, execution might take longer, for it automatically sets up environments and installs packages for both Python and Julia.
+3. The script will ask to open a specification file. Use this option and create the plot specification file sticking to the guidelines from the [JSON specification file](#json-specification-file) section.
 
 ### More options
+
+If you are using the app for the first time, execution might take longer, for it automatically sets up environments and installs packages for both Python and Julia.
 
 There are some additional script options. You can check their description by calling help:
 
@@ -68,9 +69,7 @@ There are some additional script options. You can check their description by cal
 
 ### *One-click* execution
 
-For the most basic *define plots & simulate & plot* workflow you can use the automated script `auto-q-voter.bat`. It will open a notebook to allow you to define the plot specifications. After you finish and close the file, the main script will be called.
-
-You can simply copy it to the desktop or anywhere you want and run it by double-clicking. However, before usage **remember to change the project folder path in its second line!**
+For the basic usage, you can even create a shortcut (on your desktop or anywhere you want), insert `"path\to\the\file\q-voter.bat"` and run it by double-clicking.
 
 ## JSON specification file
 

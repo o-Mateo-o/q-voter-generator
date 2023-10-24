@@ -23,4 +23,5 @@ if not exist .venv (
 
 if %errorlevel% EQU 0 (
     %py% qvoterapp\qvoter.py %*
+    pause
 )

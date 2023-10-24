@@ -305,7 +305,6 @@ class DataManager:
             how="outer",
             indicator=True,
         )
-        print(merged_data)
         if not merged_data.query('_merge=="right_only"').empty:
             raise FileManagementError(
                 "Data set for plots is not complete. Try to resimulate..."
