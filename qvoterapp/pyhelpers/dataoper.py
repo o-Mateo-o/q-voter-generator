@@ -122,7 +122,7 @@ class SpecManager:
                         "Parser is skipping parameters remaining in some 'group' sections: {group}"
                     )
                 all_plot_rel_params.append(single_plot_rel_params)
-                covered_mandatory_param_keys = {plot_args, plot_group}
+            covered_mandatory_param_keys = {plot_args, plot_group}
         else:
             # initially prepare only plot arguments
             single_plot_rel_params = {
