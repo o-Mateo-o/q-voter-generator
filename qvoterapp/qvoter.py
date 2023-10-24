@@ -6,9 +6,10 @@ from argparse import ArgumentParser
 from colorama import Fore
 from pyhelpers import QVoterAppError, SimulCollector, set_logger
 
-SPEC_PATH = "plot.spec.json"
-DATA_PATH = "data.xml"
-CHUNK_SIZE = 10
+# constants stored by the argparser:
+# * str_spec_path = "plot.spec.json"
+# * str_data_path = "data.xml"
+# * chunk_size = 5
 
 parser = ArgumentParser(
     prog="Q-voter exit time and exit probability simulation & plotting app",
@@ -26,6 +27,19 @@ parser.add_argument(
     default="plot.spec.json",
     help="path to the plot specification file containing all input configutrations",
 )
+parser.add_argument(
+    "-d",
+    "--data-storage",
+    default="data.xml",
+    help="path to the data storage file. It is recommended to use one for all the simulations",
+)
+parser.add_argument(
+    "-c",
+    "--chunk-size",
+    default=5,
+    type=int,
+    help="approximated chunks size (number of simulations) for distrubuted computing",
+)
 
 if __name__ == "__main__":
     args = parser.parse_args()
@@ -35,14 +49,14 @@ if __name__ == "__main__":
     # logger and the parameters
     warnings.filterwarnings("ignore")
     set_logger()
-    if args.plot_spec:
-        spec_path = args.plot_spec
-    else:
-        spec_path = SPEC_PATH
     # execution
     try:
         print(f"{Fore.CYAN}\n*** SIMULATING ***{Fore.RESET}")
-        SimulCollector(spec_path, DATA_PATH, CHUNK_SIZE).run()
+        SimulCollector(
+            str_spec_path=args.plot_spec,
+            str_data_path=args.data_storage,
+            chunk_size=args.chunk_size,
+        ).run()
         if not args.only_simulations:
             print(f"{Fore.CYAN}\n*** PLOTTING ***{Fore.RESET}")
             pass
