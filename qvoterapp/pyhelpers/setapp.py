@@ -68,7 +68,7 @@ def open_spec_file(str_spec_path: str) -> None:
                 pass
         except OSError:
             raise QVoterAppError(f"Spec file {str_spec_path} cannot be created")
-    open_flag = input("Do you want to open the plot specification file? (y/n)\n")
+    open_flag = input("Do you want to open the plot specification file? (y/n)\n> ")
     if open_flag == "y":
         print("Opening the file. Close it when it is ready.")
         os.system(f"notepad.exe {str_spec_path}")

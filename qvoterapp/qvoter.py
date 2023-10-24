@@ -3,7 +3,7 @@ import logging
 import warnings
 from argparse import ArgumentParser
 
-from colorama import Fore
+from colorama import Fore, Back
 from pyhelpers import (
     PlotCreator,
     QVoterAppError,
@@ -47,11 +47,15 @@ parser.add_argument(
     help="approximated chunks size (number of simulations) for distrubuted computing",
 )
 
+
 def main(args) -> None:
     hello_msg = "Welcome to the q-voter exit time & exit probability simulation app!"
     print(f"{Fore.CYAN}\n{hello_msg}\n{'-' * len(hello_msg)}\n{Fore.RESET}")
-    open_spec_file(args.plot_spec) # it still asks if you want to open
-    input(f"{Fore.CYAN}\nAre you ready for some magic? Press ENTER if so ;){Fore.RESET}")
+    open_spec_file(args.plot_spec)  # it still asks if you want to open
+    _enter_str = f"{Back.CYAN}{Fore.BLACK}ENTER{Fore.CYAN}{Back.RESET}"
+    input(
+        f"{Fore.CYAN}\nAre you ready for some magic? Press {_enter_str} if so ;){Fore.RESET}"
+    )
     # logger and the parameters
     warnings.filterwarnings("ignore")
     set_logger()
@@ -66,10 +70,8 @@ def main(args) -> None:
     ## plotting
     if not args.only_simulations:
         print(f"{Fore.CYAN}\n*** PLOTTING ***{Fore.RESET}")
-        PlotCreator(
-            str_spec_path=args.plot_spec, str_data_path=args.data_storage
-        ).run()
-    
+        PlotCreator(str_spec_path=args.plot_spec, str_data_path=args.data_storage).run()
+
 
 if __name__ == "__main__":
     args = parser.parse_args()
@@ -79,3 +81,4 @@ if __name__ == "__main__":
         logging.error(f"{err.__class__.__name__}: {err}")
     else:
         print(f"{Fore.LIGHTGREEN_EX}\nExecution successful!{Fore.RESET}")
+    input()
