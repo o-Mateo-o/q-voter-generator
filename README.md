@@ -76,7 +76,7 @@ You can simply copy it to the desktop or anywhere you want and run it by double-
 
 ### Rules
 
-The file must contain one dictionary which elements are sub-dictionaries defining specifications for each plot. Keys for sub-dictionaries must be alpha-numeric!
+The file must contain one dictionary which elements are sub-dictionaries defining specifications for each plot. Keys for sub-dictionaries must be **unique** and **alpha-numeric**!
 
 #### Parameter groups
 
@@ -89,6 +89,11 @@ Inside the sub-dictionary, you can pass parameters. Some of them are required, o
   - `"exit_time"` for average exit time,
   - `"exit_proba"` for exit probability.
 - `"plot.group"` (*optional*) - parameter indicating plot series. It must be the key of one of the other parameters (net or model).
+- `"plot.desc_info"` (*optional*) - additional text info added to the plot description.
+- `"plot.x_ax_scale"` (*optional*) - argument axis scaling:
+  - `'linear'` (*default*),
+  - `'log'`.
+- `"plot.x_ax_scale"` (*optional*) - value axis scaling. Options as above.
 
 ##### Net params
 

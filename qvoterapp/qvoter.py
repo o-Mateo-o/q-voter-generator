@@ -4,7 +4,7 @@ import warnings
 from argparse import ArgumentParser
 
 from colorama import Fore
-from pyhelpers import QVoterAppError, SimulCollector, set_logger
+from pyhelpers import PlotCreator, QVoterAppError, SimulCollector, set_logger
 
 # constants stored by the argparser:
 # * str_spec_path = "plot.spec.json"
@@ -51,15 +51,20 @@ if __name__ == "__main__":
     set_logger()
     # execution
     try:
+        ## simulation
         print(f"{Fore.CYAN}\n*** SIMULATING ***{Fore.RESET}")
         SimulCollector(
             str_spec_path=args.plot_spec,
             str_data_path=args.data_storage,
             chunk_size=args.chunk_size,
         ).run()
+        ## plotting
         if not args.only_simulations:
             print(f"{Fore.CYAN}\n*** PLOTTING ***{Fore.RESET}")
-            pass
+            PlotCreator(
+                str_spec_path=args.plot_spec, str_data_path=args.data_storage
+            ).run()
+    # error/success messages
     except QVoterAppError as err:
         logging.error(f"{err.__class__.__name__}: {err}")
     else:

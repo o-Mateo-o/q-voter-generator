@@ -81,7 +81,7 @@ class SpecManager:
         )
         return product_df
 
-    def _parse_part(self, part_spec: Dict[str, Any]) -> pd.DataFrame:
+    def _parse_req_part(self, part_spec: Dict[str, Any]) -> pd.DataFrame:
         # find plot argument and group related keys
         plot_args = part_spec.pop("plot.args")
         try:
@@ -147,8 +147,6 @@ class SpecManager:
         # process the rest of parameters
         mandatory_param_keys = {
             "net.net_type",
-
-
             "net.size",
             "method.mc_runs",
             "model.x",
@@ -176,12 +174,16 @@ class SpecManager:
         return part_req
         # TODO: check if there are the same rows between `all_plot_rel_params` if so, warn
 
-    def parse(self) -> pd.DataFrame:
-        part_req_list = []
+    def parse_req(
+        self, plot_specific: bool = False
+    ) -> Union[pd.DataFrame, Dict[pd.Dataframe]]:
+        # ! it takes care of the data quality as well,
+        # ! so validates plot arg/group vs other available params relations
+        part_req_dict = dict()
         for plot_name, part_spec in self.spec.items():
             try:
-                part_req = self._parse_part(part_spec)
-                part_req_list.append(part_req)
+                part_req = self._parse_req_part(part_spec)
+                part_req_dict.update({plot_name: part_req})
             except KeyError as err:
                 raise SpecificationError(
                     f"Some key {err} is required but cannot be found in {plot_name} config"
@@ -190,9 +192,63 @@ class SpecManager:
                 raise SpecificationError(
                     f"The following issue encountered while parsing {plot_name} specification: {err}"
                 )
-        full_req = pd.concat(part_req_list, ignore_index=True)
-        full_req.drop_duplicates(inplace=True)
-        return full_req
+        if plot_specific:
+            return part_req_dict
+        else:
+            part_req_list = part_req_dict.values()
+            full_req = pd.concat(part_req_list, ignore_index=True)
+            full_req.drop_duplicates(inplace=True)
+            return full_req
+
+    def _parse_visual_part(self, part_spec: Dict[str, Any]) -> dict:
+        plot_args = part_spec.pop("plot.args")
+        plot_group = part_spec.get("plot.group")
+        plot_vals = part_spec.pop("plot.vals")
+        if plot_vals not in ("exit_proba", "avg_exit_time"):
+            raise SpecificationError(f"Values {plot_vals} is an unknown measure")
+        # !TODO!: plot_vals_scaling = (None,)
+        desc_info = part_spec.get("y_ax_scale", "")
+        x_ax_scale = part_spec.get("x_ax_scale", "linear")
+        y_ax_scale = part_spec.get("y_ax_scale", "linear")
+        accepted_ax_scales = ("linear", "log")
+        if x_ax_scale not in accepted_ax_scales or x_ax_scale not in accepted_ax_scales:
+            raise SpecificationError(
+                f"Axis scaling must be chosen from {accepted_ax_scales} list"
+            )
+        return {
+            "arg": plot_args,
+            "group": plot_group,
+            "vals": plot_vals,
+            "a_scaling": None,  #!
+            "v_scaling": None,  #!
+            "desc_info": desc_info,
+            "x_ax_scale": x_ax_scale,
+            "y_ax_scale": y_ax_scale,
+        }
+
+    @staticmethod
+    def _validate_plot_name(plot_name: str) -> None:
+        if not plot_name.isalnum():
+            raise SpecificationError(
+                f"Plot name {plot_name} is invalid. It should be alpha-numeric"
+            )
+
+    def parse_visual(self):
+        part_visual_dict = dict()
+        for plot_name, part_spec in self.spec.items():
+            try:
+                self._validate_plot_name(plot_name)
+                part_visual = self._parse_visual_part(part_spec)
+                part_visual_dict.update({plot_name: part_visual})
+            except KeyError as err:
+                raise SpecificationError(
+                    f"Some key {err} is required but cannot be found in {plot_name} config"
+                )
+            except SpecificationError as err:
+                raise SpecificationError(
+                    f"The following issue encountered while parsing {plot_name} specification: {err}"
+                )
+        return part_visual_dict
 
 
 class DataManager:
@@ -200,10 +256,13 @@ class DataManager:
         self.data_path = data_path
         self.PRECISION = 3
 
+    def _read_file(self) -> pd.DataFrame:
+        return pd.read_xml(self.data_path).set_index("index")
+
     def get_working_data(self, full_data_req: pd.DataFrame) -> pd.DataFrame:
         # get the existing data
         if self.data_path.is_file():
-            existing_data = pd.read_xml(self.data_path).set_index("index")
+            existing_data = self._read_file()
         else:
             existing_data = pd.DataFrame()
         # process the data to skip the existing values
@@ -234,9 +293,38 @@ class DataManager:
             )
         return full_data_req_prcsd
 
+    @staticmethod
+    def _req_add_results(
+        req: pd.DataFrame, available_data: pd.DataFrame
+    ) -> pd.DataFrame:
+        cols = req.columns.append(pd.Index(["avg_exit_time", "exit_proba"]))
+        merged_data = pd.merge(
+            available_data, req, how="outer", indicator=True
+        )
+        if not merged_data.query('_merge=="right_only"').empty:
+            raise FileManagementError(
+                "Data set for plots is not complete. Try to resimulate..."
+            )
+        data_selection = merged_data.query('_merge=="both"')[cols]
+        if data_selection.isnull().any().any():
+            raise FileManagementError("Some values required for plotting are not given")
+        return data_selection
+
+    def get_plotting_data(self, plot_reqs: Dict[pd.DataFrame]) -> Dict[pd.DataFrame]:
+        if self.data_path.is_file():
+            available_data = self._read_file()
+        else:
+            raise FileManagementError(
+                f"Data file {self.data_path} does not exist. Plotting data cannot be prepared"
+            )
+        return {
+            plot_name: self._req_add_results(plot_req, available_data)
+            for plot_name, plot_req in plot_reqs.items()
+        }
+
     def update_file(self, new_data_chunk: pd.DataFrame) -> None:
         if self.data_path.is_file():
-            existing_data = pd.read_xml(self.data_path).set_index("index")
+            existing_data = self._read_file()
             data = pd.concat(
                 [
                     existing_data.round(self.PRECISION),

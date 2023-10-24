@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+import pandas as pd
 from numpy.typing import NDArray
 from pyhelpers.dataoper import DataManager, SpecManager
 from pyhelpers.setapp import QVoterAppError, ensure_julia_env, init_julia_proc
@@ -146,28 +147,24 @@ class SimulCollector:
         str_data_path: str,
         chunk_size: int = 20,
     ) -> None:
-        self.chunk_size = chunk_size
-        self.data_manager = DataManager(Path(str_data_path))
-        full_data_req = SpecManager(Path(str_spec_path)).parse()
-        self.data = self.data_manager.get_working_data(full_data_req)
+        self.chunk_size: int = chunk_size
+        self._data_manager = DataManager(Path(str_data_path))
+        full_data_req = SpecManager(Path(str_spec_path)).parse_req()
+        self.data: pd.DataFrame = self.data_manager.get_working_data(full_data_req)
 
     def _run_one(self, ix: int) -> None:
         raw_params_dict = self.data.iloc[ix].to_dict()
         simul_params = SimulParams(**raw_params_dict)
-        logging.info(
-            f"Starting simulation #{ix + 1}: {simul_params}."
-        )
+        logging.info(f"Starting simulation #{ix + 1}: {simul_params}.")
         results = SingleSimulation(simul_params).run()
         new_row = {**simul_params.to_dict(), **results}
         # add results & possibly rewrite the types (it's after SimulParams parsing)
         self.data.loc[ix, new_row.keys()] = new_row.values()
-        logging.info(
-            f"Simulation #{ix + 1} finished. Results: {results}."
-        )
+        logging.info(f"Simulation #{ix + 1} finished. Results: {results}.")
 
     def _run_chunk(self, chunk_ixx: NDArray) -> None:
         [self._run_one(ix) for ix in chunk_ixx]
-        self.data_manager.update_file(self.data.iloc[chunk_ixx])
+        self._data_manager.update_file(self.data.iloc[chunk_ixx])
         logging.info(
             f"--- Data chunk saved (#{chunk_ixx.min()+1}-{chunk_ixx.max()+1}/{len(self.data)})."
         )
