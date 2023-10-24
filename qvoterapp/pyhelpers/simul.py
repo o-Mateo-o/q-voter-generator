@@ -190,6 +190,7 @@ class SimulCollector:
                 f"Julia is being activated on processes [{', '.join(pids)}]..."
             )
             # map the simulations
+            logging.info(f"Launching {data_indices.size + 1} simulations.")
             pool.map(self._run_chunk, chunk_ixx_list)
         queue_listener.stop()
 
