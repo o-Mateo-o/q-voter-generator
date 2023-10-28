@@ -42,16 +42,22 @@ parser.add_argument(
     type=int,
     help="approximated chunks size (number of simulations) for distrubuted computing",
 )
+parser.add_argument(
+    "--silent",
+    action="store_true",
+    help="do not ask for any interactions",
+)
 
 
 def main(args) -> None:
     hello_msg = "Welcome to the q-voter exit time & exit probability simulation app!"
     print(f"{Fore.CYAN}\n{hello_msg}\n{'-' * len(hello_msg)}{Fore.RESET}")
-    open_spec_file(args.plot_spec)  # it still asks if you want to open
-    _enter_str = f"{Back.CYAN}{Fore.BLACK}ENTER{Fore.CYAN}{Back.RESET}"
-    input(
-        f"{Fore.CYAN}\nAre you ready for some magic? Press {_enter_str} if so!{Fore.RESET}"
-    )
+    if not args.silent:
+        open_spec_file(args.plot_spec)  # it still asks if you want to open
+        _enter_str = f"{Back.CYAN}{Fore.BLACK}ENTER{Fore.CYAN}{Back.RESET}"
+        input(
+            f"{Fore.CYAN}\nAre you ready for some magic? Press {_enter_str} if so!{Fore.RESET}"
+        )
     # logger and the parameters
     warnings.filterwarnings("ignore")
     # execution
@@ -69,6 +75,7 @@ def main(args) -> None:
             str_spec_path=args.plot_spec, str_data_path=args.data_storage
         )
         plot_creator.run()
+    if not args.silent and not args.only_simulations:
         open_out_dir(plot_creator.out_dir)
 
 
