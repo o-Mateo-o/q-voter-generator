@@ -13,11 +13,6 @@ from pyhelpers import (
     set_logger,
 )
 
-# constants stored by the argparser:
-# * str_spec_path = "plot.spec.json"
-# * str_data_path = "data.xml"
-# * chunk_size = 5
-
 parser = ArgumentParser(
     prog="Q-voter exit time and exit probability simulation & plotting app",
     description="This is an app created by Mateusz Machaj (2023) to support the research related to the bachelor's thesis.",
@@ -59,7 +54,6 @@ def main(args) -> None:
     )
     # logger and the parameters
     warnings.filterwarnings("ignore")
-    set_logger()
     # execution
     ## simulation
     print(f"{Fore.CYAN}\n*** SIMULATING ***{Fore.RESET}")
@@ -79,6 +73,7 @@ def main(args) -> None:
 
 
 if __name__ == "__main__":
+    set_logger()
     args = parser.parse_args()
     try:
         main(args)

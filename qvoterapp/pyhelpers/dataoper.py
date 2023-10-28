@@ -2,7 +2,7 @@ import json
 import logging
 from itertools import product
 from pathlib import Path
-from typing import Any, Dict, Union
+from typing import Any, Dict, Union, Tuple
 
 import numpy as np
 import pandas as pd
@@ -26,7 +26,7 @@ class SpecManager:
     def read_file(spec_path: Path) -> dict:
         if not spec_path.is_file():
             raise FileManagementError(f"Config file '{spec_path}' doesn't exist")
-        with open(spec_path, "r") as f:
+        with open(spec_path, "r", encoding="utf-8") as f:
             try:
                 plot_scpec = json.load(f)
             except json.JSONDecodeError:
@@ -54,7 +54,7 @@ class SpecManager:
                 raise SpecificationError(
                     f"Value {val} is suposed to be in (start, step, stop) range dict format"
                 )
-            parsed_val = np.arange(start=start, step=step, stop=stop)
+            parsed_val = np.arange(start=start, step=step, stop=stop + step)
             if parsed_val.size == 0:
                 raise SpecificationError(
                     f"Value {val} presents an empty list of parameters"
@@ -84,7 +84,8 @@ class SpecManager:
         )
         return product_df
 
-    def _parse_req_part(self, part_spec: Dict[str, Any]) -> pd.DataFrame:
+    def _parse_req_part(self, part_spec: Dict[str, Any]) -> Tuple[pd.DataFrame, set]:
+        # ! it does not replace compound values yet
         part_spec = part_spec.copy()
         # find plot argument and group related keys
         plot_args = part_spec.pop("plot.args")
@@ -123,16 +124,16 @@ class SpecManager:
                 }
                 if group:
                     logging.warning(
-                        "Parser is skipping parameters remaining in some 'group' sections: {group}"
+                        f"Parser is skipping parameters remaining in some 'group' sections: {group}"
                     )
                 all_plot_rel_params.append(single_plot_rel_params)
-            covered_mandatory_param_keys = {plot_args, plot_group}
+            pre_covered_param_keys = {plot_args, plot_group}
         else:
             # initially prepare only plot arguments
             single_plot_rel_params = {
                 plot_args: self._process_value(part_spec.pop(plot_args), multiple=True)
             }
-            covered_mandatory_param_keys = {plot_args}
+            pre_covered_param_keys = {plot_args}
             # if grouping variable exists, update the data with it
             if plot_group is not None:
                 single_plot_rel_params.update(
@@ -142,7 +143,7 @@ class SpecManager:
                         )
                     }
                 )
-                covered_mandatory_param_keys.add(plot_group)
+                pre_covered_param_keys.add(plot_group)
             if any([params.size < 2 for params in single_plot_rel_params.values()]):
                 logging.warning(
                     "Detected plot arguments or groups series of size 1. Continuing..."
@@ -157,7 +158,7 @@ class SpecManager:
             "model.q",
             "model.eps",
         }
-        left_mandatory_param_keys = mandatory_param_keys - covered_mandatory_param_keys
+        left_mandatory_param_keys = mandatory_param_keys - pre_covered_param_keys
         left_mandatory_params = {
             param_key: self._process_value(part_spec.pop(param_key))
             for param_key in left_mandatory_param_keys
@@ -175,8 +176,27 @@ class SpecManager:
             for plot_rel_params_chunk in all_plot_rel_params
         ]
         part_req = pd.concat(part_req_chunks, ignore_index=True)
+        pre_covered_param_keys_cleansed = {
+            self._drop_param_prefix(param_key) for param_key in pre_covered_param_keys
+        }
+        return part_req, pre_covered_param_keys_cleansed
+        # TODO: check if there are the same rows between `all_plot_rel_params` if so, ERROR
+
+    def _replace_compound_vals(self, part_req: pd.DataFrame) -> pd.DataFrame:
         return part_req
-        # TODO: check if there are the same rows between `all_plot_rel_params` if so, warn
+        # TODO: you know...
+
+    def _get_part_req_desc(
+        self, part_req: pd.DataFrame, plot_rel_param_keys: set = {}
+    ) -> dict:
+        # ! generates parameter description dict
+        req_desc = part_req.iloc[0].to_dict()
+        req_desc = {
+            param_key: param_val
+            for param_key, param_val in req_desc.items()
+            if param_key not in plot_rel_param_keys
+        }
+        return req_desc
 
     def parse_req(
         self, plot_specific: bool = False
@@ -184,10 +204,14 @@ class SpecManager:
         # ! it takes care of the data quality as well,
         # ! so validates plot arg/group vs other available params relations
         part_req_dict = dict()
+        part_req_desc_dict = dict()
         for plot_name, part_spec in self.spec.items():
             try:
-                part_req = self._parse_req_part(part_spec)
-                part_req_dict.update({plot_name: part_req})
+                part_req, plot_rel_param_keys = self._parse_req_part(part_spec)
+                part_req_desc_dict.update(
+                    {plot_name: self._get_part_req_desc(part_req, plot_rel_param_keys)}
+                )
+                part_req_dict.update({plot_name: self._replace_compound_vals(part_req)})
             except KeyError as err:
                 raise SpecificationError(
                     f"Some key {err} is required but cannot be found in {plot_name} config"
@@ -197,7 +221,7 @@ class SpecManager:
                     f"The following issue encountered while parsing {plot_name} specification: {err}"
                 )
         if plot_specific:
-            return part_req_dict
+            return part_req_dict, part_req_desc_dict
         else:
             part_req_list = part_req_dict.values()
             full_req = pd.concat(part_req_list, ignore_index=True)

@@ -14,13 +14,14 @@ class PlotCreator:
     def __init__(self, str_spec_path: str, str_data_path: str) -> None:
         data_manager = DataManager(Path(str_data_path))
         spec_manager = SpecManager(Path(str_spec_path))
-        data_reqs = spec_manager.parse_req(plot_specific=True)
+        data_reqs, data_req_descs = spec_manager.parse_req(plot_specific=True)
         visual_specs = spec_manager.parse_visual()
         data = data_manager.get_plotting_data(data_reqs)
         self.assets = {
             plot_name: {
                 "data": plot_data,
                 "visual_specs": visual_specs[plot_name],
+                "param_desc": data_req_descs[plot_name],
             }
             for plot_name, plot_data in data.items()
         }
@@ -80,11 +81,18 @@ class PlotCreator:
     def _simplyfy_math(expr: str) -> str:
         return expr.replace("\(", "$").replace("\)", "$")
 
+    def _assign_final_val_col(self, plot_name: str) -> pd.DataFrame:
+        df = self.assets[plot_name]["data"]
+        vals = self.assets[plot_name]["visual_specs"]["vals"]
+        # TODO ------------------------------------------------------ if not isintance(vals, CompoundVar):
+        df["VALUES"] = df[vals]
+
     def _create_single_plot(self, plot_name: str) -> None:
-        fig, ax = plt.subplots(figsize=(6, 4))
         args = self.assets[plot_name]["visual_specs"]["args"]
         vals = self.assets[plot_name]["visual_specs"]["vals"]
         group = self.assets[plot_name]["visual_specs"]["group"]
+        self._assign_final_val_col(plot_name)
+        fig, ax = plt.subplots(figsize=(6, 4))
         sns.lineplot(
             data=self.assets[plot_name]["data"],
             x=args,
@@ -100,6 +108,7 @@ class PlotCreator:
         ax.set_yscale(self.assets[plot_name]["visual_specs"]["y_ax_scale"])
         ax.set_xlabel(self._simplyfy_math(f"{self.plot_translator[args]}"))
         ax.set_ylabel(
+            # TODO: SOLVE THE COMPOUND VALUE CASE -- consider that `vals` is either a single variable or CompoundVar
             self._simplyfy_math(
                 f"{self.plot_translator[vals]}({self.plot_translator[args]})"
             )
@@ -124,31 +133,32 @@ class PlotCreator:
         )
 
     def _create_single_tex_desc(self, plot_name: str) -> str:
-        params: dict = self.assets[plot_name]["data"].iloc[0].to_dict()
+        params: dict = self.assets[plot_name]["param_desc"]
 
         args = self.assets[plot_name]["visual_specs"]["args"]
         vals = self.assets[plot_name]["visual_specs"]["vals"]
         group = self.assets[plot_name]["visual_specs"]["group"]
-        params.pop(args)
-        params.pop(vals)
         net_type = params.pop("net_type")
-        if group:
-            params.pop(group)
-        for key in ["avg_exit_time", "exit_proba"]:
-            if key in params:
-                params.pop(key)
+        params = {
+            param_key: param_val
+            for param_key, param_val in params.items()
+            if param_key not in {"avg_exit_time", "exit_proba"}
+        }
         mc_runs = params.pop("mc_runs")
         other_params = [
             f"{self.desc_translator[key][1]} {self.plot_translator[key]}\( = {str(val).replace('.', '{,}')}\)"
             for key, val in params.items()
         ]
-        desc = "Zależność {vals} od {args} na grafie {graph}, dla {group}{other_params}. {mc_runs}".format(
+        desc = "Zależność {vals} od {args} na grafie {graph}, dla {group}{other_params}. {mc_runs}. {info}".format(
+            # TODO: SOLVE THE COMPOUND VALUE CASE -- consider that `vals` is either a single variable or CompoundVar ----- also there
+            # TODO: generally translating all the args should be replaced by that, 'cause there is a possibility...
             vals=self.desc_translator[vals][1],
             args=self.desc_translator[args][1],
             graph=self.graph_translator[net_type],
             group=f"różnych {self.desc_translator[group][2]} oraz " if group else "",
             other_params=", ".join(other_params[:-1]) + " i " + other_params[-1],
-            mc_runs=f"{self.desc_translator['mc_runs'][0]} {self.plot_translator['mc_runs']}\( = {mc_runs}\).",
+            mc_runs=f"{self.desc_translator['mc_runs'][0]} {self.plot_translator['mc_runs']}\( = {mc_runs}\)",
+            info=self.assets[plot_name]["visual_specs"]["desc_info"],
         )
         desc = desc.replace("\)\(", "")
         return desc
@@ -163,9 +173,9 @@ class PlotCreator:
         \label{{fig:{plot_name}}}
         \end{{figure}}"""
         return tex_figure
-    
-    @staticmethod 
-    def _add_tex_struct(tex_figures: str)-> str:
+
+    @staticmethod
+    def _add_tex_struct(tex_figures: str) -> str:
         content = f"""
         \\documentclass{{report}}
         \\usepackage[utf8]{{inputenc}}
