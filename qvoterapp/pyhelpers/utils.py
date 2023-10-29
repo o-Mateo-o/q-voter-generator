@@ -1,5 +1,6 @@
-from typing import Any, Iterable, Union, List
 import logging
+from typing import Any, Iterable, List, Union
+
 from pyhelpers.setapp import SpecificationError
 
 
@@ -18,12 +19,15 @@ class CompoundVar:
         self.operations = operations
         self.order = list(range(len(operations)))  # default
 
-        if isinstance(order, list) and len(order) == len(operations):
-            self.order = order
-        elif isinstance(order, list):
-            logging.warning(
-                f"Assigning default order to {self.__str__}. Given order list had an invalid length"
-            )
+        if isinstance(order, list):
+            if len(order) != len(operations) or sorted(order) != sorted(self.order):
+                logging.warning(
+                    f"Assigning default order to {self}. "
+                    + "Given list had an invalid length or not consecutive elements"
+                )
+            else:
+                self.order = order
+        print(self.order)
 
     def _validate_input(self, params: Any, operations: Any) -> None:
         if not isinstance(params, list) or not isinstance(operations, list):
@@ -63,10 +67,10 @@ class CompoundVar:
             for oper_ix in self.order:
                 fun = self.oper_translator[self.operations[oper_ix]]
                 curpar_ix_corrected = oper_ix - len(
-                    list(filter(lambda x: x < oper_ix, popped))
+                    list(filter(lambda x: x <= oper_ix, popped))
                 )
                 nextpar_ix_corrected = (
-                    oper_ix + 1 - len(list(filter(lambda x: x < oper_ix + 1, popped)))
+                    oper_ix + 1 - len(list(filter(lambda x: x <= oper_ix + 1, popped)))
                 )
                 values[curpar_ix_corrected] = fun(
                     self._param_as_numeric(values[curpar_ix_corrected], data),

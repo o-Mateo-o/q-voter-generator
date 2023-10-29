@@ -1,0 +1,78 @@
+{
+    "net_alias": {
+        "BA": "Barabasiego-Alberta",
+        "WS": "Wattsa-Strogatza",
+        "C": "pełnym"
+    },
+    "symbol": {
+        "mc_runs": "\\(M\\)",
+        "net_type": "Model grafu",
+        "q": "\\(q\\)",
+        "x": "\\(x\\)",
+        "size": "\\(N\\)",
+        "eps": "\\(\\varepsilon\\)",
+        "avg_exit_time": "\\(T\\)",
+        "exit_proba": "\\(E\\)",
+        "k": "\\(k\\)",
+        "beta": "\\(\beta\\)",
+        "//": "\\(/\\)",
+        "/": "\\(/\\)",
+        "^": "\\(^\\)",
+        "*": "\\(\\cdot\\)"
+    },
+    "desc": {
+        "mc_runs": [
+            "Liczba uśrednień Monte Carlo",
+            "Liczby uśrednień Monte Carlo",
+            "Liczb uśrednień Monte Carlo"
+        ],
+        "net_type": [
+            "model grafu",
+            "modelu grafu",
+            "modeli grafu"
+        ],
+        "q": [
+            "wartość",
+            "wartości",
+            "wartości"
+        ],
+        "x": [
+            "początkowa proporcja opinii",
+            "początkowej proporcji opinii",
+            "początkowych proporcji opinii"
+        ],
+        "size": [
+            "rozmiar systemu",
+            "rozmiaru systemu",
+            "rozmiarów systemu"
+        ],
+        "eps": [
+            "poziom szumu",
+            "poziomu szumu",
+            "poziomów szumu"
+        ],
+        "avg_exit_time": [
+            "średni czas wyjścia",
+            "średniego czasu wyjścia",
+            "średnich czasów wyjścia"
+        ],
+        "exit_proba": [
+            "prawdopodobieństwo wyjścia",
+            "prawdopodobieństwa wyjścia",
+            "prawdopodobieństw wyjścia"
+        ],
+        "k": [
+            "parametr grafu",
+            "parametru grafu",
+            "paramertów grafu"
+        ]
+    },
+    "connectors": {
+        "scale": " ze skalowaniem",
+        "and1": " i~"
+    },
+    "template.desc": "Zależność {vals} od {args} na grafie {graph}, dla {group}{other_params}. {mc_runs}. {info}",
+    "template.group_info": "różnych {group_desc} {group_sym} oraz ",
+    "template.fig": "\\begin{{figure}}[]\n\\includegraphics[height=7cm]{{images/{PARAM_plot_name}.pdf}}\n\\caption{{{PARAM_desc}}}\n\\label{{fig:{PARAM_plot_name}}}\n\\end{{figure}}",
+    "template.doc": "\\documentclass{{report}}\n\\usepackage[utf8]{{inputenc}}\n\\usepackage{{graphicx}}\n\\usepackage{{polski}}\n\\begin{{document}}{PARAM_tex_figures}\n\\end{{document}}"
+}

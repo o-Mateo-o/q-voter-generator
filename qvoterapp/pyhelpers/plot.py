@@ -1,81 +1,40 @@
+import json
 import logging
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
 from pyhelpers.dataoper import DataManager, SpecManager
-from pyhelpers.setapp import QVoterAppError
+from pyhelpers.setapp import FileManagementError, QVoterAppError
 from pyhelpers.utils import CompoundVar, assure_direct_params
+
+
+class TextConfig(dict):
+    def __init__(self) -> None:
+        text_config_path = Path("qvoterapp", "text.config.json")
+        if not text_config_path.is_file():
+            raise FileManagementError(f"Text config file doesn't exist")
+        with open(text_config_path, "r", encoding="utf-8") as f:
+            try:
+                self.update(json.load(f))
+            except json.JSONDecodeError:
+                raise FileManagementError("Cannot decode JSON spec file")
 
 
 class TextBuilder:
     def __init__(self) -> None:
-        self.translator = {
-            "net_alias": {
-                "BA": "Barabasiego-Alberta",
-                "WS": "Wattsa-Strogatza",
-                "C": "pełnym",
-            },
-            "symbol": {
-                "mc_runs": "\(M\)",
-                "net_type": "Model grafu",
-                "q": "\(q\)",
-                "x": "\(x\)",
-                "size": "\(N\)",
-                "eps": r"$\varepsilon\)",
-                "avg_exit_time": "\(T\)",
-                "exit_proba": "\(E\)",
-                "k": "\(k\)",
-                "beta": r"\(\beta\)",
-                "//": "\(/\)",
-                "/": "\(/\)",
-                "^": "\(^\)",
-                "*": "\(\cdot\)",
-            },
-            "desc": {
-                "mc_runs": [
-                    "Liczba uśrednień Monte Carlo",
-                    "Liczby uśrednień Monte Carlo",
-                    "Liczb uśrednień Monte Carlo",
-                ],
-                "net_type": ["model grafu", "modelu grafu", "modeli grafu"],
-                "q": ["wartość", "wartości", "wartości"],
-                "x": [
-                    "początkowa proporcja opinii",
-                    "początkowej proporcji opinii",
-                    "początkowych proporcji opinii",
-                ],
-                "size": ["rozmiar systemu", "rozmiaru systemu", "rozmiarów systemu"],
-                "eps": ["poziom szumu", "poziomu szumu", "poziomów szumu"],
-                "avg_exit_time": [
-                    "średni czas wyjścia",
-                    "średniego czasu wyjścia",
-                    "średnich czasów wyjścia",
-                ],
-                "exit_proba": [
-                    "prawdopodobieństwo wyjścia",
-                    "prawdopodobieństwa wyjścia",
-                    "prawdopodobieństw wyjścia",
-                ],
-                "k": [
-                    "parametr grafu",
-                    "parametru grafu",
-                    "paramertów grafu",
-                ],
-            },
-            "connectors": {"scale": "ze skalowaniem"},
-        }
+        self.text_config = TextConfig()
 
     def desc(self, name: str, mode: int) -> str:
         if isinstance(name, str):
-            res = self.translator["desc"][name][mode]
+            res = self.text_config["desc"][name][mode]
         elif isinstance(name, CompoundVar):
             name_main = name.main
-            res = f"{self.translator['desc'][name_main][mode]} {self.translator['connectors']['scale']}"
+            res = f"{self.text_config['desc'][name_main][mode]}{self.text_config['connectors']['scale']}"
         else:
             logging.warning(f"Name for '{name}' could not be evaluated")
             res = "?"
@@ -89,7 +48,7 @@ class TextBuilder:
         elif isinstance(raw, float):
             res = f"\({str(raw).replace('.', '{,}')}\)"
         elif isinstance(raw, str):
-            res = self.translator["symbol"][raw]
+            res = self.text_config["symbol"][raw]
         elif isinstance(raw, CompoundVar):
             args = [self.symbol(param) for param in raw.params]
             opers = [self.symbol(operation) for operation in raw.operations]
@@ -97,6 +56,11 @@ class TextBuilder:
             res_list[::2] = args
             res_list[1::2] = opers
             res = "".join(res_list)
+            if len(args) > 2:
+                logging.warning(
+                    f"{raw} representation might be inaccurate. "
+                    + "Currently there is no order-parenthesis support for complex compound variables"
+                )
         else:
             raise QVoterAppError(f"Unknown math symbol type: {raw}")
 
@@ -114,7 +78,7 @@ class TextBuilder:
 
     def net_alias(self, name: str) -> str:
         if isinstance(name, str):
-            return self.translator["net_alias"][name]
+            return self.text_config["net_alias"][name]
         else:
             raise QVoterAppError(
                 f"Wrong net alias variable type: {name}. Should be string"
@@ -136,6 +100,7 @@ class PlotCreator:
             }
             for plot_name, plot_data in data.items()
         }
+        self.text_config = TextConfig()
         self.text_builder = TextBuilder()
         self.out_dir = self._provide_dir()
 
@@ -215,41 +180,32 @@ class PlotCreator:
             + f"\( = \){self.text_builder.symbol(val)}"
             for key, val in params.items()
         ]
-        description_template = "Zależność {vals} od {args} na grafie {graph}, dla {group}{other_params}. {mc_runs}. {info}"
-        description = description_template.format(
+        group_info = ""
+        if group:
+            group_info = self.text_config["template.group_info"].format(
+                group_desc=self.text_builder.desc(group, 2),
+                group_sym=self.text_builder.symbol(group),
+            )
+        description = self.text_config["template.desc"].format(
             vals=f"{self.text_builder.desc(vals, 1)} ({self.text_builder.symbol(vals)})",
             args=f"{self.text_builder.desc(args, 1)} ({self.text_builder.symbol(args)})",
             graph=self.text_builder.net_alias(net_type),
-            group=f"różnych {self.text_builder.desc(group, 2)} {self.text_builder.symbol(group)} oraz "
-            if group
-            else "",
-            other_params=", ".join(other_params[:-1]) + " i~" + other_params[-1],
+            group=group_info,
+            other_params=", ".join(other_params[:-1])
+            + self.text_config["connectors"]["and1"]
+            + other_params[-1],
             mc_runs=f"{self.text_builder.desc('mc_runs', 0)} {self.text_builder.symbol('mc_runs')}\( = {mc_runs}\)",
             info=self.assets[plot_name]["visual_specs"]["desc_info"],
         )
         description = description.replace("\)\(", "")
         return description
 
-    @staticmethod
-    def _figurize_desc(plot_name: str, desc: str) -> str:
-        tex_figure = r"""
-        \begin{{figure}}[]
-        \includegraphics[height=7cm]{{images/{PARAM_plot_name}.pdf}}
-        \caption{{{PARAM_desc}}}
-        \label{{fig:{PARAM_plot_name}}}
-        \end{{figure}}"""
+    def _figurize_desc(self, plot_name: str, desc: str) -> str:
+        tex_figure: str = self.text_config["template.fig"]
         return tex_figure.format(PARAM_plot_name=plot_name, PARAM_desc=desc)
 
-    @staticmethod
-    def _add_tex_struct(tex_figures: str) -> str:
-        content = r"""
-        \documentclass{{report}}
-        \usepackage[utf8]{{inputenc}}
-        \usepackage{{graphicx}}
-        \usepackage{{polski}}
-        \begin{{document}}
-        {PARAM_tex_figures}
-        \end{{document}}"""
+    def _add_tex_struct(self, tex_figures: str) -> str:
+        content: str = self.text_config["template.doc"]
         return content.format(PARAM_tex_figures=tex_figures)
 
     def run(self) -> None:

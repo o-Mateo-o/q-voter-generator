@@ -83,7 +83,7 @@ There are some additional script options. You can check their description by cal
 
 ### Rules
 
-The file must contain one dictionary which elements are sub-dictionaries defining specifications for each plot. Keys for sub-dictionaries must be **unique** and **alpha-numeric**!
+The file must contain one dictionary which elements are sub-dictionaries defining specifications for each plot. Keys for sub-dictionaries must be **unique** and **alpha-numeric**! Moreover, don't use `"__ARGUMENTS__"` &  `"__VALUES__"` param names. They are reserved internal columns.
 
 #### Parameter groups
 
@@ -126,11 +126,18 @@ If the arguments need to be different for each series, you can use `"groups: { .
 
 Net or model params (also in the `"groups"` env) be passed in three modes:
 
-- single value mode: string or number (eg. `"model.x": 0.5`)
-- list mode: a list of values (eg. `"model.x": [0, 0.25, 0.5]`)
-- range mode: a special range dict containing start, step, and stop values (eg. `"model.x": {"start": 0, "step": 0.1, "stop": 1}`)
+- single value mode: string or number (eg. `"model.x": 0.5`),
+- list mode: a list of values (eg. `"model.x": [0, 0.25, 0.5]`),
+- range mode: a special range dict containing start, step, and stop values (eg. `"model.x": {"start": 0, "step": 0.1, "stop": 1}`).
 
 However, list and range mode can be used **solely** for the parameters serving as `"plot.args"` and `"plot.groups"`. Other parameters must be single values.
+
+Additionally, for model and net params, plus plot values and arguments, you can use *compound variables* - eg. to get scaled $T/N^2$ on $y$ axis. They can be built by passing a dict, like `{"params": ["avg_exit_time", "size", 2], "operations": ["/", "^"], "order": [1, 0]}`. However, you have to stick to the folowing guidelines:
+
+- all three arguments must be lists,
+- `"params"` (*required*) - contains either other column names (**without `xxx.` prefixes**) or numbers,
+- `"operations"` (*required*) - a sequence of two-argument operations (therefore, must be shorter by 1 than `"params"`). Currently supported ones are: `/`, `*`, `^`, `//`,
+- `"order"` (*optional*) - indices (starting from 0) corresponding to the operations and indicating eval order; by default `"operations"` are performed in the original order and **standard priority is neglected** - you have to manually specify the order.
 
 ### Example
 
@@ -269,7 +276,7 @@ The newest tested versions for stable performance are:
 
 The main project folder contains the Python requirements (`requirements.txt`), batch scripts described in [usage](#usage) section (`auto-q-voter.bat`, `q-voter.bat`), and the `qvoterapp` application directory. Except for that it will be placed for `data.xml` base (**do not modify it!**), input specification files - as `plot.spec.json`, and virtual environment files.
 
-When it comes to `qvoterapp`, it can be divided into the Julia module(`jlhelpers`), Python module (`pyhelpers`), standalone Python script (`qvoter.py`), and Julia package provider (`packages.jl`). The external scripts will utilize all of them, so for basic usage you don't have to worry about this part.
+When it comes to `qvoterapp`, it can be divided into the Julia module(`jlhelpers`), Python module (`pyhelpers`), standalone Python script (`qvoter.py`), generated text configuration (`text.config.json`) and Julia package provider (`packages.jl`). The external scripts will utilize all of them, so for basic usage you don't have to worry about this part.
 
 ## Author
 
