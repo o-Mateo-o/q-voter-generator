@@ -2,20 +2,13 @@ import json
 import logging
 from itertools import product
 from pathlib import Path
-from typing import Any, Dict, Union, Tuple
+from typing import Any, Dict, Tuple, Union
 
 import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
-from pyhelpers.setapp import QVoterAppError
-
-
-class SpecificationError(QVoterAppError):
-    ...
-
-
-class FileManagementError(QVoterAppError):
-    ...
+from pyhelpers.setapp import FileManagementError, SpecificationError
+from pyhelpers.utils import CompoundVar, assure_direct_params, is_dict_with_keys
 
 
 class SpecManager:
@@ -35,37 +28,49 @@ class SpecManager:
 
     @staticmethod
     def _process_value(
-        val: Union[list, dict, int, float, str], multiple: bool = False
+        val: Union[list, dict, int, float, str],
+        multiple: bool = False,
+        single_str: bool = False,
     ) -> Union[NDArray, int, float, str]:
         if isinstance(val, (int, float, str)):
-            parsed_val = np.array([val])
+            parsed_val = val
+        # list scenario
         elif multiple and isinstance(val, list):
-            parsed_val = np.unique(np.array(val))
-            if parsed_val.size == 0:
-                raise SpecificationError(
-                    f"Value {val} presents an empty list of parameters"
-                )
-        elif multiple and isinstance(val, dict):
             try:
-                start = val["start"]
-                step = val["step"]
-                stop = val["stop"]
-            except KeyError as err:
-                raise SpecificationError(
-                    f"Value {val} is suposed to be in (start, step, stop) range dict format"
-                )
-            parsed_val = np.arange(start=start, step=step, stop=stop + step)
+                parsed_val = np.unique(np.array(val))
+            except TypeError:
+                raise SpecificationError(f"Invalid types of the list elements: {val}")
             if parsed_val.size == 0:
                 raise SpecificationError(
                     f"Value {val} presents an empty list of parameters"
                 )
-        elif isinstance(val, (list, dict)):
+        # dictionary scenarios
+        elif multiple and is_dict_with_keys(val, ("start", "step", "stop")):
+            parsed_val = np.arange(
+                start=val["start"], step=val["step"], stop=val["stop"] + val["step"]
+            )
+            if parsed_val.size == 0:
+                raise SpecificationError(
+                    f"Value {val} presents an empty list of parameters"
+                )
+        elif is_dict_with_keys(val, ("params", "operations")):
+            parsed_val = CompoundVar(val["params"], val["operations"], val.get("order"))
+        elif isinstance(val, dict):
+            raise SpecificationError(f"Dictionary value {val} schema not recognized")
+        # unknown scenarios
+        elif val is None:
+            return None
+        elif not multiple and isinstance(val, (list, dict)):
             raise SpecificationError(f"Value {val} in config cannot be non-singular")
         else:
             raise SpecificationError(
                 f"Value {val} in config has an invalid type {type(val)}"
             )
-        return parsed_val
+
+        if not isinstance(parsed_val, np.ndarray) and not single_str:
+            return np.array([parsed_val])
+        else:
+            return parsed_val
 
     @staticmethod
     def _drop_param_prefix(param: str) -> str:
@@ -87,23 +92,39 @@ class SpecManager:
     def _parse_req_part(self, part_spec: Dict[str, Any]) -> Tuple[pd.DataFrame, set]:
         # ! it does not replace compound values yet
         part_spec = part_spec.copy()
-        # find plot argument and group related keys
+        # process arguments to get the column with multiple values possible
         plot_args = part_spec.pop("plot.args")
+        if isinstance(plot_args, str):
+            plot_main_var = plot_args
+        elif isinstance(self._process_value(plot_args), CompoundVar):
+            plot_main_var = self._process_value(plot_args).main
+        else:
+            raise SpecificationError("Unknown plot argument specification")
+        # Process groups
         try:
             plot_group = part_spec.pop("plot.group")
+            if not isinstance(plot_group, str):
+                raise SpecificationError(
+                    "Grouping by a non direct parameter is not possible"
+                )
         except KeyError:
             plot_group = None
-        if plot_args == plot_group:
+        if plot_main_var == plot_group:
             raise SpecificationError(
                 "Groupping variable cannot be the one used for arguments"
             )
         # both cases - group section exists and not
         if "groups" in part_spec:
+            # check some conditions before further processing
+            if isinstance(self._process_value(plot_main_var), CompoundVar):
+                raise SpecificationError(
+                    "Cannot specify compound variables for various series using 'groups' section"
+                )
             if plot_group is None:
                 raise SpecificationError(
                     "'groups' section can be used only if `plot.group` parameter added"
                 )
-            if plot_args in part_spec or plot_group in part_spec:
+            if plot_main_var in part_spec or plot_group in part_spec:
                 raise SpecificationError(
                     "Arguments and groups can't be given both in the 'groups' section and outside of it"
                 )
@@ -117,7 +138,9 @@ class SpecManager:
             for group in groups:
                 group: dict
                 single_plot_rel_params = {
-                    plot_args: self._process_value(group.pop(plot_args), multiple=True),
+                    plot_main_var: self._process_value(
+                        group.pop(plot_main_var), multiple=True
+                    ),
                     plot_group: self._process_value(
                         group.pop(plot_group), multiple=True
                     ),
@@ -127,13 +150,15 @@ class SpecManager:
                         f"Parser is skipping parameters remaining in some 'group' sections: {group}"
                     )
                 all_plot_rel_params.append(single_plot_rel_params)
-            pre_covered_param_keys = {plot_args, plot_group}
+            pre_covered_param_keys = {plot_main_var, plot_group}
         else:
             # initially prepare only plot arguments
             single_plot_rel_params = {
-                plot_args: self._process_value(part_spec.pop(plot_args), multiple=True)
+                plot_main_var: self._process_value(
+                    part_spec.pop(plot_main_var), multiple=True
+                )
             }
-            pre_covered_param_keys = {plot_args}
+            pre_covered_param_keys = {plot_main_var}
             # if grouping variable exists, update the data with it
             if plot_group is not None:
                 single_plot_rel_params.update(
@@ -183,13 +208,28 @@ class SpecManager:
         # TODO: check if there are the same rows between `all_plot_rel_params` if so, ERROR
 
     def _replace_compound_vals(self, part_req: pd.DataFrame) -> pd.DataFrame:
-        return part_req
-        # TODO: you know...
+        if part_req.empty:
+            return part_req
+        # do it just if df is not empty
+        part_req_transformed = pd.DataFrame()
+        for rowdict in part_req.to_dict(orient="records"):
+            rowdict_transformed = {
+                colname: assure_direct_params(rowdict, rowdict[colname])
+                for colname in rowdict
+            }
+            # ? not really efficient but the dfs tend to be small
+            part_req_transformed = pd.concat(
+                [part_req_transformed, pd.DataFrame([rowdict_transformed])],
+                ignore_index=True,
+            )
+        return part_req_transformed
 
+    @staticmethod
     def _get_part_req_desc(
-        self, part_req: pd.DataFrame, plot_rel_param_keys: set = {}
+        part_req: pd.DataFrame, plot_rel_param_keys: set = {}
     ) -> dict:
         # ! generates parameter description dict
+        # ! use before compound replaced!!!!!!!!!!!!!!
         req_desc = part_req.iloc[0].to_dict()
         req_desc = {
             param_key: param_val
@@ -218,7 +258,7 @@ class SpecManager:
                 )
             except SpecificationError as err:
                 raise SpecificationError(
-                    f"The following issue encountered while parsing {plot_name} specification: {err}"
+                    f"The following issue encountered while parsing '{plot_name}' specification: {err}"
                 )
         if plot_specific:
             return part_req_dict, part_req_desc_dict
@@ -226,30 +266,45 @@ class SpecManager:
             part_req_list = part_req_dict.values()
             full_req = pd.concat(part_req_list, ignore_index=True)
             full_req.drop_duplicates(inplace=True)
-            return full_req
+            return self._replace_compound_vals(full_req)
 
     def _parse_visual_part(self, part_spec: Dict[str, Any]) -> dict:
         part_spec = part_spec.copy()
-        plot_args = part_spec.pop("plot.args")
-        plot_group = part_spec.get("plot.group")
-        plot_vals = part_spec.pop("plot.vals")
-        if plot_vals not in ("exit_proba", "avg_exit_time"):
+        plot_args = self._process_value(part_spec.pop("plot.args"), single_str=True)
+        plot_group = self._process_value(part_spec.get("plot.group"), single_str=True)
+        plot_vals = self._process_value(part_spec.pop("plot.vals"), single_str=True)
+        if not isinstance(plot_vals, CompoundVar) and plot_vals not in (
+            "exit_proba",
+            "avg_exit_time",
+        ):
             raise SpecificationError(f"Values {plot_vals} is an unknown measure")
-        # !TODO!: plot_vals_scaling = (None,)
-        desc_info = part_spec.get("plot.desc_info", "")
-        x_ax_scale = part_spec.get("plot.x_ax_scale", "linear")
-        y_ax_scale = part_spec.get("plot.y_ax_scale", "linear")
+        desc_info = self._process_value(
+            part_spec.get("plot.desc_info", ""), single_str=True
+        )
+        x_ax_scale = self._process_value(
+            part_spec.get("plot.x_ax_scale", "linear"), single_str=True
+        )
+        y_ax_scale = self._process_value(
+            part_spec.get("plot.y_ax_scale", "linear"), single_str=True
+        )
         accepted_ax_scales = ("linear", "log")
         if x_ax_scale not in accepted_ax_scales or x_ax_scale not in accepted_ax_scales:
             raise SpecificationError(
                 f"Axis scaling must be chosen from {accepted_ax_scales} list"
             )
+        if isinstance(plot_args, CompoundVar):
+            plot_args.transform_names(self._drop_param_prefix)
+            plot_args_var = plot_args
+        else:
+            plot_args_var = self._drop_param_prefix(plot_args)
+        if plot_group:
+            plot_group_var = self._drop_param_prefix(plot_group)
+        else:
+            plot_group_var = None
         return {
-            "args": self._drop_param_prefix(plot_args),
-            "group": self._drop_param_prefix(plot_group),
+            "args": plot_args_var,
+            "group": plot_group_var,
             "vals": plot_vals,
-            "a_scaling": None,  #!
-            "v_scaling": None,  #!
             "desc_info": desc_info,
             "x_ax_scale": x_ax_scale,
             "y_ax_scale": y_ax_scale,
@@ -275,7 +330,7 @@ class SpecManager:
                 )
             except SpecificationError as err:
                 raise SpecificationError(
-                    f"The following issue encountered while parsing {plot_name} specification: {err}"
+                    f"The following issue encountered while parsing '{plot_name}' specification: {err}"
                 )
         return part_visual_dict
 

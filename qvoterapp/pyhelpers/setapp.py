@@ -1,13 +1,25 @@
 import logging
+import os
 from logging.handlers import QueueHandler
 from pathlib import Path
 from typing import Any
-import os
 
 from colorlog import ColoredFormatter
 
 
 class QVoterAppError(Exception):
+    ...
+
+
+class SpecificationError(QVoterAppError):
+    ...
+
+
+class FileManagementError(QVoterAppError):
+    ...
+
+
+class SimulationError(QVoterAppError):
     ...
 
 
@@ -71,19 +83,19 @@ def open_spec_file(str_spec_path: str) -> None:
     open_flag = input("\nDo you want to open the plot specification file? (y/n)\n> ")
     if not open_flag:
         print("[n]")
-    if open_flag == "y":
+    if open_flag.upper() == "Y":
         print("Opening the file. Close it when it is ready.")
         os.system(f"notepad.exe {str_spec_path}")
     else:
         print("As you wish sir/madam. I will NOT open it for you!")
 
+
 def open_out_dir(out_dir: Path) -> None:
     open_flag = input("\nDo you want to open the output folder? (y/n)\n> ")
     if not open_flag:
         print("[n]")
-    if open_flag == "y":
+    if open_flag.upper() == "Y":
         if out_dir.is_dir():
             os.system(f"explorer.exe {out_dir}")
         else:
             raise QVoterAppError("Cannot open output folder. Try to do it manually.")
-        

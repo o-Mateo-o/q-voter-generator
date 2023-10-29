@@ -10,11 +10,7 @@ import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 from pyhelpers.dataoper import DataManager, SpecManager
-from pyhelpers.setapp import QVoterAppError, ensure_julia_env, init_julia_proc
-
-
-class SimulationError(QVoterAppError):
-    ...
+from pyhelpers.setapp import SimulationError, ensure_julia_env, init_julia_proc
 
 
 class SimulParams:
