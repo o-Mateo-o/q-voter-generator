@@ -27,6 +27,7 @@
     - [Barabasi-Albert](#barabasi-albert)
     - [Watts-Strogatz](#watts-strogatz)
     - [Complete](#complete)
+    - [Real - Facebook](#real---facebook)
   - [Important notes](#important-notes)
   - [Technologies](#technologies)
   - [Project structure](#project-structure)
@@ -239,7 +240,7 @@ Order of parameters in the file: `N,k`.
 (*key name*: **WS**, *wiki*: [link](https://en.wikipedia.org/wiki/Watts%E2%80%93Strogatz_model))
 
 - `N` - number of nodes.
-- `k` - average degree of the node.
+- `k` - average degree of the node (**if odd, an algorithm takes `k = k - 1`**).
 - `beta` - the probability of rewiring.
 
 Order of parameters in the file: `N,k,beta`.
@@ -253,6 +254,18 @@ This one can create in particular a one-dimensional ring when given `k=2` and `b
 - `N` - number of nodes.
 
 Order of parameters in the file: `N`.
+
+### Real - Facebook
+
+(*key name*: **FB**, *source*: [link](https://snap.stanford.edu/data/ego-Facebook.html))
+
+- `N` - number of nodes. Only selected values available:
+  - *TBA*
+  <!-- - $N = ...$ -->
+
+Order of parameters in the file: `N`.
+
+This one uses the real social networks, based on the Facebook anonymized data.
 
 ## Important notes
 
@@ -276,7 +289,9 @@ The newest tested versions for stable performance are:
 
 The main project folder contains the Python requirements (`requirements.txt`), batch scripts described in [usage](#usage) section (`auto-q-voter.bat`, `q-voter.bat`), and the `qvoterapp` application directory. Except for that it will be placed for `data.xml` base (**do not modify it!**), input specification files - as `plot.spec.json`, and virtual environment files.
 
-When it comes to `qvoterapp`, it can be divided into the Julia module(`jlhelpers`), Python module (`pyhelpers`), standalone Python script (`qvoter.py`), generated text configuration (`text.config.json`) and Julia package provider (`packages.jl`). The external scripts will utilize all of them, so for basic usage you don't have to worry about this part.
+When it comes to `qvoterapp`, it can be divided into the Julia module(`jlhelpers`), Python module (`pyhelpers`), standalone Python script (`qvoter.py`), generated text configuration (`text.config.json`), Julia real network data[^2] in `net_images.jld`, and Julia package provider (`packages.jl`). The external scripts will utilize all of them, so for basic usage you don't have to worry about this part.
+
+[^2]: Data is saved as a dictionary of numbers and corresponding `SimpleGraph` objects.
 
 ## Author
 

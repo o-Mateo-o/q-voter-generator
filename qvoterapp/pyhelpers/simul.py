@@ -8,6 +8,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+from julia import JuliaError
 from numpy.typing import NDArray
 from pyhelpers.dataoper import DataManager, SpecManager
 from pyhelpers.setapp import SimulationError, ensure_julia_env, init_julia_proc
@@ -187,7 +188,10 @@ class SimulCollector:
             )
             # map the simulations
             logging.info(f"Launching {data_indices.size} simulations.")
-            pool.map(self._run_chunk, chunk_ixx_list)
+            try:
+                pool.map(self._run_chunk, chunk_ixx_list)
+            except Exception as err:
+                raise SimulationError(err)
         queue_listener.stop()
 
     def run(self) -> None:

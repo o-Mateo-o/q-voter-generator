@@ -9,12 +9,12 @@ module NetSimul
 export examine_q_voter
 
 using Graphs
+using JLD2
 using Distributions, Random, Statistics
 
 include("utils.jl")
 include("models.jl")
 include("simulations.jl")
-
 
 """
     examine_q_voter(x, net_key, M, q, eps, N, args...)

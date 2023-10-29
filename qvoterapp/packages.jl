@@ -2,6 +2,7 @@ using Pkg
 
 dependencies = [
     "Graphs",
+    "JLD2",
     "Distributions",
     "Random",
     "Statistics",
