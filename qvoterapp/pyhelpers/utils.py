@@ -27,7 +27,6 @@ class CompoundVar:
                 )
             else:
                 self.order = order
-        print(self.order)
 
     def _validate_input(self, params: Any, operations: Any) -> None:
         if not isinstance(params, list) or not isinstance(operations, list):
