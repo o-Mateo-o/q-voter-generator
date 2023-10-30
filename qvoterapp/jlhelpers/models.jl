@@ -101,7 +101,4 @@ end
 """
 Model structures assigned to the key names.
 """
-const model_dict = Dict("BA" => NetBA, "WS" => NetWS, "C" => NetC)
-
-
-throw(ArgumentError("ASD"))
+const model_dict = Dict("BA" => NetBA, "WS" => NetWS, "C" => NetC, "FB" => NetFB)
