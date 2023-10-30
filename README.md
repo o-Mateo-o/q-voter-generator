@@ -40,9 +40,9 @@ This app serves as a handy tool to create **exit time** and **exit probability**
 Why it is powerful?
 
 - It provides super **simple interaction**, auto simulations and plotting.
-- **Data storage and management**, allowing to reuse the simulation results.
+- **Data storage and management** allows to reuse the simulation results.
 
-<!-- ![image](readme_image.png) -->
+![image](readme_image.png)
 
 Just specify the required plots in a JSON file, open the app, and forget about the other tedious steps!
 
