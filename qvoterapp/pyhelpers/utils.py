@@ -22,7 +22,7 @@ class CompoundVar:
         if isinstance(order, list):
             if len(order) != len(operations) or sorted(order) != sorted(self.order):
                 logging.warning(
-                    f"Assigning default order to {self}. "
+                    f"Assigning default order to {self} with original o={order}. "
                     + "Given list had an invalid length or not consecutive elements"
                 )
             else:

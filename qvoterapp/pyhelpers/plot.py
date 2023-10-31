@@ -13,7 +13,26 @@ from pyhelpers.setapp import FileManagementError, QVoterAppError
 from pyhelpers.utils import CompoundVar, assure_direct_params
 
 
-class TextConfig(dict):
+class TextTranslatorDict(dict):
+    def __getitem__(self, __key: Any) -> Any:
+        try:
+            __val = super().__getitem__(__key)
+        except KeyError as err:
+            logging.warning(
+                f"Access to the {err} variable in the text translation dictionary failed. Assigning '[ ? ]'"
+            )
+            return TextTranslatorDict()
+
+        if isinstance(__val, dict):
+            return TextTranslatorDict(__val)
+        else:
+            return __val
+
+    def __str__(self) -> str:
+        return "[ ? ]"
+
+
+class TextConfig(TextTranslatorDict):
     def __init__(self) -> None:
         text_config_path = Path("qvoterapp", "text.config.json")
         if not text_config_path.is_file():
