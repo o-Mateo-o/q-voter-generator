@@ -56,7 +56,7 @@ class SimulParams:
                 param = str(param)
             except ValueError:
                 raise SimulationError(f"Parameter {param} must be a string")
-            if param not in ("BA", "WS", "C"):
+            if param not in ("BA", "WS", "C", "FB"):
                 raise SimulationError(f"Net type {param} is not allowed")
         else:
             raise SimulationError(f"Unknown parameter type '{expected_type}'")
@@ -71,7 +71,7 @@ class SimulParams:
                     "k": self.parse_param(net_params["k"], "number"),
                     "beta": self.parse_param(net_params["beta"], "float_prop"),
                 }
-            if net_type == "C":
+            if net_type in ("C", "FB"):
                 return dict()
         except KeyError as err:
             raise SimulationError(
@@ -84,7 +84,7 @@ class SimulParams:
             arg_list = [self.net_params["k"]]
         if self.net_type == "WS":
             arg_list = [self.net_params["k"], self.net_params["beta"]]
-        if self.net_type == "C":
+        if self.net_type in ("C", "FB"):
             arg_list = []
         return "," + ",".join(map(str, arg_list))
 
@@ -159,16 +159,16 @@ class SimulCollector:
         self.data.loc[ix, new_row.keys()] = new_row.values()
         logging.info(f"Simulation #{ix + 1} finished. Results: {results}.")
 
-    def _run_chunk(self, chunk_ixx: NDArray) -> None:
-        [self._run_one(ix) for ix in chunk_ixx]
-        self._data_manager.update_file(self.data.iloc[chunk_ixx])
+    def _run_chunk(self, chunk_indices: NDArray) -> None:
+        [self._run_one(ix) for ix in chunk_indices]
+        self._data_manager.update_file(self.data.iloc[chunk_indices])
         logging.info(
-            f"--- Data chunk saved (#{chunk_ixx.min()+1}-{chunk_ixx.max()+1}/{len(self.data)})."
+            f"--- Data chunk saved (#{chunk_indices.min()+1}-{chunk_indices.max()+1}/{len(self.data)})."
         )
 
     def _run(self) -> None:
         data_indices = self.data.index.to_numpy()
-        chunk_ixx_list = np.array_split(
+        chunk_indices_list = np.array_split(
             data_indices, np.ceil(data_indices.size / self.chunk_size)
         )
         n_processes = os.cpu_count()
@@ -189,7 +189,7 @@ class SimulCollector:
             # map the simulations
             logging.info(f"Launching {data_indices.size} simulations.")
             try:
-                pool.map(self._run_chunk, chunk_ixx_list)
+                pool.map(self._run_chunk, chunk_indices_list)
             except Exception as err:
                 raise SimulationError(err)
         queue_listener.stop()

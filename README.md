@@ -245,7 +245,7 @@ Order of parameters in the file: `N,k`.
 
 Order of parameters in the file: `N,k,beta`.
 
-This one can create in particular a one-dimensional ring when given `k=2` and `beta=0`.
+This algorithm can create in particular a one-dimensional ring when given `k=2` and `beta=0`.
 
 ### Complete
 
@@ -260,12 +260,12 @@ Order of parameters in the file: `N`.
 (*key name*: **FB**, *source*: [link](https://snap.stanford.edu/data/ego-Facebook.html))
 
 - `N` - number of nodes. Only selected values available:
-  - *TBA*
-  <!-- - $N = ...$ -->
+
+  $N \in (40, 44, 148, 168, 224, 324, 532, 744, 775, 1033)$.
 
 Order of parameters in the file: `N`.
 
-This one uses the real social networks, based on the Facebook anonymized data.
+This one uses largest connected components of the real social networks, based on the Facebook anonymized data.
 
 ## Important notes
 
