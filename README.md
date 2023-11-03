@@ -40,7 +40,7 @@ This app serves as a handy tool to create **exit time** and **exit probability**
 Why it is powerful?
 
 - It provides super **simple interaction**, auto simulations and plotting.
-- **Data storage and management** allows to reuse the simulation results.
+- Data storage and management allow the reuse of the simulation results.
 
 ![image](readme_image.png)
 
@@ -54,7 +54,7 @@ On output, you will get the folder with *.pdf* plot files and the *.tex* embeddi
 
 ### Quick guide
 
-1. Make sure you have installed both **Python** and **Julia** on your device (and added to path). The stable versions used by the app are specified in the [technologies](#technologies) section.
+1. Make sure you have installed both **Python** and **Julia** on your device (and added them to the path). The stable versions used by the app are specified in the [technologies](#technologies) section.
 2. Open the `q-voter.bat` script. If using **CMD**, type
 
    ```batch
@@ -62,7 +62,7 @@ On output, you will get the folder with *.pdf* plot files and the *.tex* embeddi
    q-voter
    ```
 
-    Note that you can even add the app directory to PATH and always skip the direcory change, executing just
+    Note that you can even add the app directory to PATH and always skip the directory change, executing just
 
     ```batch
     q-voter
@@ -111,8 +111,8 @@ Inside the sub-dictionary, you can pass parameters. Some of them are required, o
 
 ##### Model params
 
-- `"model.x"`  (*required*) - initial proportion of opinions.
-- `"model.q"` (*required*) - number of neighbors affecting agent's decision each time.
+- `"model.x"`  (*required) - the initial proportion of opinions.
+- `"model.q"` (*required*) - number of neighbors affecting the agent's decision each time.
 - `"model.eps"`  (*required*) - noise level from 0 to 1.
 
 ##### Method params
@@ -133,9 +133,9 @@ Net or model params (also in the `"groups"` env) be passed in three modes:
 
 However, list and range mode can be used **solely** for the parameters serving as `"plot.args"` and `"plot.groups"`. Other parameters must be single values.
 
-Additionally, for model and net params, plus plot values and arguments, you can use *compound variables* - eg. to get scaled $T/N^2$ on $y$ axis. They can be built by passing a dict, like `{"params": ["avg_exit_time", "size", 2], "operations": ["/", "^"], "order": [1, 0]}`. However, you have to stick to the folowing guidelines:
+Additionally, for model and net params, plus plot values and arguments, you can use *compound variables* - eg. to get scaled $T/N^2$ on $y$ axis. They can be built by passing a dict, like `{"params": ["avg_exit_time", "size", 2], "operations": ["/", "^"], "order": [1, 0]}`. However, you have to stick to the following guidelines:
 
-- all three arguments must be lists,
+- all three arguments must be list objects,
 - `"params"` (*required*) - contains either other column names (**without `xxx.` prefixes**) or numbers,
 - `"operations"` (*required*) - a sequence of two-argument operations (therefore, must be shorter by 1 than `"params"`). Currently supported ones are: `/`, `*`, `^`, `//`,
 - `"order"` (*optional*) - indices (starting from 0) corresponding to the operations and indicating eval order; by default `"operations"` are performed in the original order and **standard priority is neglected** - you have to manually specify the order.
