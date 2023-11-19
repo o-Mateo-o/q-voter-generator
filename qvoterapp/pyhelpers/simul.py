@@ -1,3 +1,5 @@
+"""Simulation features"""
+
 import logging
 import multiprocessing
 import os
@@ -8,15 +10,33 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from julia import JuliaError
 from numpy.typing import NDArray
 from pyhelpers.dataoper import DataManager, SpecManager
 from pyhelpers.setapp import SimulationError, ensure_julia_env, init_julia_proc
 
 
 class SimulParams:
-    # ! stick to the `./models.md` guidelines
-    # ! net_params are the other than size args
+    r"""Parameters for one simulation. This class comes along with a set of methods
+    to parse the parameters and represent them
+
+    .. note::
+        You must stick to the `./models.md` guidelines when passing the parameters
+
+    :param mc_runs: Monte Carlo runs number
+    :type mc_runs: int
+    :param x: Initial positive opinions rate in the system
+    :type x: float
+    :param q: Neighbor number parameter
+    :type q: int
+    :param eps: A noise level
+    :type eps: float
+    :param size: Size of a network
+    :type size: int
+    :param net_type: A network type alias
+    :type net_type: str
+    :param \**net_params: Network parameters other than its size
+    """
+
     def __init__(
         self,
         mc_runs: int,
@@ -27,6 +47,7 @@ class SimulParams:
         net_type: str,
         **net_params,
     ) -> None:
+        """Initialize a class. Parse all the input parameters"""
         self.mc_runs: int = self.parse_param(mc_runs, "number")
         self.x: int = self.parse_param(x, "float_prop")
         self.q: int = self.parse_param(q, "number")
@@ -37,6 +58,17 @@ class SimulParams:
 
     @staticmethod
     def parse_param(param: Any, expected_type: str) -> Any:
+        """Parse one parameter value and validate it
+
+        :param param: A raw value of the parameter
+        :type param: Any
+        :param expected_type: A kind of the given parameter.  Can be 'number' (a positive integer),
+            'float_prop' (a proportion from [0, 1] range) or a 'net_key' (a network type alias)
+        :type expected_type: str
+        :raises SimulationError: If the parameter format is incorrect
+        :return: A safe parameter
+        :rtype: Any
+        """
         if expected_type == "number":
             try:
                 param = int(param)
@@ -63,6 +95,17 @@ class SimulParams:
         return param
 
     def parse_net_params(self, net_params: dict, net_type: str) -> dict:
+        """Extract the relevant network-related parameters from the dictionary and parse them
+        based on the network type given in the second argument
+
+        :param net_params: Network parameters other than its size
+        :type net_params: dict
+        :param net_type: A network type alias
+        :type net_type: str
+        :raises SimulationError: If a required parameter is missing
+        :return: Parsed network-related parameters
+        :rtype: dict
+        """
         try:
             if net_type == "BA":
                 return {"k": self.parse_param(net_params["k"], "number")}
@@ -80,6 +123,12 @@ class SimulParams:
 
     @property
     def net_params_julia(self) -> str:
+        """Get the network parameters other than its size as a julia source code
+        to be inserted into the simulating function
+
+        :return: Additional network parameters as a julia source code
+        :rtype: str
+        """
         if self.net_type == "BA":
             arg_list = [self.net_params["k"]]
         if self.net_type == "WS":
@@ -89,6 +138,14 @@ class SimulParams:
         return "," + ",".join(map(str, arg_list))
 
     def to_dict(self, formatted: bool = False) -> dict:
+        """Get the dictionary of all the parameters. In the 'formatted' mode the additional
+        net parameters are not the separate values but a formatted julia source code string
+
+        :param formatted: Julia src flag to format the ``net_params`` as a string, defaults to False
+        :type formatted: bool, optional
+        :return: All the simulation parameters
+        :rtype: dict
+        """
         common_dict_part = {
             "x": self.x,
             "net_type": self.net_type,
@@ -103,6 +160,11 @@ class SimulParams:
             return {**common_dict_part, **self.net_params}
 
     def __str__(self) -> str:
+        """Get a text description of an object and all the values it stores
+
+        :return: String representation of the parameters
+        :rtype: str
+        """
         net_params_frmtd = ",".join(
             [
                 f"{param_key}={param_val}"
@@ -116,15 +178,36 @@ class SimulParams:
 
 
 class ResultsDict(dict):
+    """A dictionary class with custom string representation for the outcomes
+
+    .. note::
+        Designed to use only for the average exit time and the exit probability values
+    """
+
     def __str__(self) -> str:
+        """Get a text representation of the results stored in the dict (exit time and probability)
+
+        :raises KeyError: If an outcome value is missing in the dictionary
+        :return: String representation of the outcomes
+        :rtype: str
+        """
         return f"T={self['avg_exit_time']}, E={self['exit_proba']}"
 
 
 class SingleSimulation:
+    """A worker that simulates one q-voter scenario using Julia and gathers
+    resulting average exit time and exit probability
+
+
+    :param simul_params: Parameters for one simulation
+    :type simul_params: SimulParams
+    """
+
     def __init__(
         self,
         simul_params: SimulParams,
     ) -> None:
+        """Initialize an object"""
         self.simul_params = simul_params
 
     def run(self) -> dict:
@@ -138,18 +221,38 @@ class SingleSimulation:
 
 
 class SimulCollector:
+    """A worker that collects all the simulation results and saves them to the database file.
+    Required scenarios are automatically evaluated based on the input plot specification and
+    the existing data
+
+    :param str_spec_path: A path to the plot specification json file
+    :type str_spec_path: str
+    :param str_data_path: A path to the xml output data storage file
+    :type str_data_path: str
+    :param chunk_size: Average chunk size for the simulations, defaults to 5
+    :type chunk_size: int, optional
+    """
+
     def __init__(
         self,
         str_spec_path: str,
         str_data_path: str,
-        chunk_size: int = 20,
+        chunk_size: int = 5,
     ) -> None:
+        """Initialize an object (having prepared all the scenarios to be simulated)"""
         self.chunk_size: int = chunk_size
         self._data_manager = DataManager(Path(str_data_path))
         full_data_req = SpecManager(Path(str_spec_path)).parse_req()
         self.data: pd.DataFrame = self._data_manager.get_working_data(full_data_req)
 
     def _run_one(self, ix: int) -> None:
+        """Run a single simulation scenario based on one parameter row
+        in the data table and write the outcomes into that table
+        Log the start & finish info
+
+        :param ix: Index of the scenario row (from 0 to n-1)
+        :type ix: int
+        """
         raw_params_dict = self.data.iloc[ix].to_dict()
         simul_params = SimulParams(**raw_params_dict)
         logging.info(f"Starting simulation #{ix + 1}: {simul_params}.")
@@ -160,6 +263,14 @@ class SimulCollector:
         logging.info(f"Simulation #{ix + 1} finished. Results: {results}.")
 
     def _run_chunk(self, chunk_indices: NDArray) -> None:
+        """Run multiple simulations (a chunk) and update the database
+        with the newly generated outcomes.
+        Log the file update success info
+
+        :param chunk_indices:  Indices of the scenario rows
+            (an array containing numbers from 0 to n-1)
+        :type chunk_indices: NDArray
+        """
         [self._run_one(ix) for ix in chunk_indices]
         self._data_manager.update_file(self.data.iloc[chunk_indices])
         logging.info(
@@ -167,6 +278,11 @@ class SimulCollector:
         )
 
     def _run(self) -> None:
+        """Run all the simulations in separate processes on each the available cpu.
+        In each process activate a julia env and map the simulation chunks
+
+        :raises SimulationError: If *any* error occurred on a child process
+        """
         data_indices = self.data.index.to_numpy()
         chunk_indices_list = np.array_split(
             data_indices, np.ceil(data_indices.size / self.chunk_size)
@@ -195,6 +311,9 @@ class SimulCollector:
         queue_listener.stop()
 
     def run(self) -> None:
+        """Make sure that all the Julia packages are installed and the environment (project) exist.
+        Then, run all the simulation via a multiprocessing map and inform client about the progress
+        """
         if self.data.empty:
             logging.info("No additional data required. Skipping simulations.")
         else:

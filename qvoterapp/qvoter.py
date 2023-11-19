@@ -1,4 +1,9 @@
 #!/usr/bin/env python
+
+"""This is a interactive Python q-voter simulation app designed for Windows terminals.
+The parameter documentation can be accessed by calling the script with an ``-h`` argument
+"""
+
 import logging
 import warnings
 from argparse import ArgumentParser
@@ -56,6 +61,21 @@ def main(
     chunk_size: int,
     silent: bool,
 ) -> None:
+    """A main function of the app.
+    Call the simulations and reporting functions. Interact with the user,
+    allowing him to see an input/output without extra browser usage
+
+    :param only_simulations: If the visualization should be skipped
+    :type only_simulations: bool
+    :param plot_spec: A path to the plot specification json file
+    :type plot_spec: str
+    :param data_storage: A path to the xml output data storage file
+    :type data_storage: str
+    :param chunk_size: Average chunk size for the simulations
+    :type chunk_size: int
+    :param silent: Silent mode flag (user interactions turned off)
+    :type silent: bool
+    """
     hello_msg = "Welcome to the q-voter exit time & exit probability simulation app!"
     print(f"{Fore.CYAN}\n{hello_msg}\n{'-' * len(hello_msg)}{Fore.RESET}")
     if not silent:
@@ -77,17 +97,17 @@ def main(
     ## plotting
     if not only_simulations:
         print(f"{Fore.CYAN}\n*** PLOTTING ***{Fore.RESET}")
-        plot_creator = PlotCreator(
-            str_spec_path=plot_spec, str_data_path=data_storage
-        )
+        plot_creator = PlotCreator(str_spec_path=plot_spec, str_data_path=data_storage)
         plot_creator.run()
     if not silent and not only_simulations:
         open_out_dir(plot_creator.out_dir)
 
 
 if __name__ == "__main__":
+    # prepare a logger and parse the params
     set_logger()
     args = parser.parse_args()
+    # run the main funtion and handle the errors
     try:
         main(**dict(args._get_kwargs()))
     except QVoterAppError as err:

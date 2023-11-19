@@ -1,5 +1,5 @@
 """
-Module providing the fine tools for q-voter simulations on various graph models.
+A module providing the fine tools for q-voter simulations on various graph models.
 """
 
 __precompile__()

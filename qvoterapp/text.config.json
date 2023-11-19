@@ -80,5 +80,5 @@
     "template.desc": "Zależność {vals} od {args} na grafie {graph}, dla {group}{other_params}. {mc_runs}. {info}",
     "template.group_info": "różnych {group_desc} {group_sym} oraz ",
     "template.fig": "\\begin{{figure}}[H]\\centering\n\\includegraphics[height=6cm]{{images/{PARAM_plot_name}.pdf}}\n\\caption{{{PARAM_desc}}}\n\\label{{fig:{PARAM_plot_name}}}\n\\end{{figure}}",
-    "template.doc": "\\documentclass{{report}}\n\\usepackage[utf8]{{inputenc}}\n\\usepackage{{graphicx}}\n\\usepackage{float}\n\\usepackage{{polski}}\n\\begin{{document}}\n{PARAM_tex_figures}\n\\end{{document}}"
+    "template.doc": "\\documentclass{{report}}\n\\usepackage[utf8]{{inputenc}}\n\\usepackage{{graphicx}}\n\\usepackage{{float}}\n\\usepackage{{polski}}\n\\begin{{document}}\n{PARAM_tex_figures}\n\\end{{document}}"
 }

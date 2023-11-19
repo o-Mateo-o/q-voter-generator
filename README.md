@@ -3,7 +3,7 @@
 # Q-voter model generator
 
 ![Windows](https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)
-[![Licence](https://img.shields.io/github/license/Ileriayo/markdown-badges?style=for-the-badge)](./LICENSE)
+[![License](https://img.shields.io/github/license/Ileriayo/markdown-badges?style=for-the-badge)](./LICENSE)
 
 ## Table of contents
 
@@ -107,7 +107,7 @@ Inside the sub-dictionary, you can pass parameters. Some of them are required, o
 
 - `"net.net_type"` (*required*) - network type. One of the keys from the [networks](#networks) section.
 - `"net.size"` (*required*) - number of the network nodes.
-- `"net.*****"`  (*optional/depends on the model*) - ...all the other net params, sticking to the [networks](#networks) common convention.
+- `"net.*****"`  (*optional/depends on the model*) - ...all the other net params, sticking to the [networks'](#networks) common convention.
 
 ##### Model params
 
@@ -129,11 +129,11 @@ Net or model params (also in the `"groups"` env) be passed in three modes:
 
 - single value mode: string or number (eg. `"model.x": 0.5`),
 - list mode: a list of values (eg. `"model.x": [0, 0.25, 0.5]`),
-- range mode: a special range dict containing start, step, and stop values (eg. `"model.x": {"start": 0, "step": 0.1, "stop": 1}`).
+- range mode: a special range dictionary containing start, step, and stop values (eg. `"model.x": {"start": 0, "step": 0.1, "stop": 1}`).
 
 However, list and range mode can be used **solely** for the parameters serving as `"plot.args"` and `"plot.groups"`. Other parameters must be single values.
 
-Additionally, for model and net params, plus plot values and arguments, you can use *compound variables* - eg. to get scaled $T/N^2$ on $y$ axis. They can be built by passing a dict, like `{"params": ["avg_exit_time", "size", 2], "operations": ["/", "^"], "order": [1, 0]}`. However, you have to stick to the following guidelines:
+Additionally, for model and net params, plus plot values and arguments, you can use *compound variables* - eg. to get scaled $T/N^2$ on the $y$ axis. They can be built by passing a dictionary, like `{"params": ["avg_exit_time", "size", 2], "operations": ["/", "^"], "order": [1, 0]}`. However, you have to stick to the following guidelines:
 
 - all three arguments must be list objects,
 - `"params"` (*required*) - contains either other column names (**without `xxx.` prefixes**) or numbers,
@@ -265,11 +265,11 @@ Order of parameters in the file: `N`.
 
 Order of parameters in the file: `N`.
 
-This one uses largest connected components of the real social networks, based on the Facebook anonymized data.
+This one uses the largest connected components of the real social networks, based on the Facebook anonymized data.
 
 ## Important notes
 
-- Float **precision** standard for the app is **3 digits**.
+- The float **precision** standard for the app is **3 digits**.
 - Average exit time uses `avg_exit_time` variables and exit probability - `exit_proba`.
 
 ## Technologies
@@ -287,7 +287,7 @@ The newest tested versions for stable performance are:
 
 ## Project structure
 
-The main project folder contains the Python requirements (`requirements.txt`), batch scripts described in [usage](#usage) section (`auto-q-voter.bat`, `q-voter.bat`), and the `qvoterapp` application directory. Except for that it will be placed for `data.xml` base (**do not modify it!**), input specification files - as `plot.spec.json`, and virtual environment files.
+The main project folder contains the Python requirements (`requirements.txt`), batch scripts described in the [usage](#usage) section (`auto-q-voter.bat`, `q-voter.bat`), and the `qvoterapp` application directory. Except for that, there is the `data.xml` database (**do not modify it!**), input specification files - as `plot.spec.json`, and virtual environment files.
 
 When it comes to `qvoterapp`, it can be divided into the Julia module(`jlhelpers`), Python module (`pyhelpers`), standalone Python script (`qvoter.py`), generated text configuration (`text.config.json`), Julia real network data[^2] in `net_images.jld`, and Julia package provider (`packages.jl`). The external scripts will utilize all of them, so for basic usage you don't have to worry about this part.
 

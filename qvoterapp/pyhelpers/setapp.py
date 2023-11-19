@@ -1,29 +1,42 @@
+"""Functions that set up the environment or perform the app-system comunication actions"""
+
 import logging
 import os
 from logging.handlers import QueueHandler
+from multiprocessing import Queue as mpQueue
 from pathlib import Path
-from typing import Any
 
 from colorlog import ColoredFormatter
 
 
 class QVoterAppError(Exception):
+    """A general App error"""
+
     ...
 
 
 class SpecificationError(QVoterAppError):
+    """An error related to specification file processing"""
+
     ...
 
 
 class FileManagementError(QVoterAppError):
+    """An error related to file management jobs"""
+
     ...
 
 
 class SimulationError(QVoterAppError):
+    """An error in the simulation workflow"""
+
     ...
 
 
 def set_logger() -> None:
+    """Set up a logger to display colorful messages in the terminal
+    and save them also into the file (with timestamps)
+    """
     logging.root.setLevel(logging.INFO)
     LOG_FILE = Path("log.log")
     # stream
@@ -50,7 +63,9 @@ def set_logger() -> None:
     log.addHandler(file)
 
 
-def ensure_julia_env() -> Any:
+def ensure_julia_env() -> None:
+    """Create a julia project if there is no such
+    and install all the missing julia packages"""
     from julia import Main, Pkg
 
     logging.info("Ensuring Julia packages...")
@@ -60,7 +75,14 @@ def ensure_julia_env() -> Any:
     logging.info("Julia project ready!")
 
 
-def init_julia_proc(q):
+def init_julia_proc(q: mpQueue) -> None:
+    """Initialize the julia project, load the net simulation module
+    and set up a logging queue handler.
+    Use this function on children processes
+
+    :param q: A multiprocessing queue to store the logs
+    :type q: mpQueue
+    """
     from julia import Main, Pkg
 
     Pkg.activate(".")
@@ -74,6 +96,12 @@ def init_julia_proc(q):
 
 
 def open_spec_file(str_spec_path: str) -> None:
+    """Open the specification file in a Windows notepad
+
+    :param str_spec_path: Path to the plot specification json file
+    :type str_spec_path: str
+    :raises QVoterAppError: If the specfication file cannot be create
+    """
     if not Path(str_spec_path).is_file():
         try:
             with open(str_spec_path, "w"):
@@ -91,6 +119,12 @@ def open_spec_file(str_spec_path: str) -> None:
 
 
 def open_out_dir(out_dir: Path) -> None:
+    """Open the results directory in Windows file explorer
+
+    :param out_dir: Path to the specific results sub-directory
+    :type out_dir: Path
+    :raises QVoterAppError: If the folder cannot be opened
+    """
     open_flag = input("\nDo you want to open the output folder? (y/n)\n> ")
     if not open_flag:
         print("[n]")

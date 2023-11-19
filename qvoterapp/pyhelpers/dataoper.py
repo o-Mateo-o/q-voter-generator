@@ -1,3 +1,5 @@
+"""Input parsing and data related features"""
+
 import json
 import logging
 from itertools import product
@@ -12,11 +14,26 @@ from pyhelpers.utils import CompoundVar, assure_direct_params, is_dict_with_keys
 
 
 class SpecManager:
+    """Input specification parser
+
+    :param spec_path: Path to the input specification file
+    :type spec_path: Path
+    """
+
     def __init__(self, spec_path: Path) -> None:
+        """Initialize an object and load the specification file"""
         self.spec = self.read_file(spec_path)
 
     @staticmethod
     def read_file(spec_path: Path) -> dict:
+        """Read the input json file
+
+        :param spec_path: Path to the input specification file
+        :type spec_path: Path
+        :raises FileManagementError: If the json file does not exist or it is corrupted
+        :return: A raw input specification
+        :rtype: dict
+        """
         if not spec_path.is_file():
             raise FileManagementError(f"Config file '{spec_path}' doesn't exist")
         with open(spec_path, "r", encoding="utf-8") as f:
@@ -28,10 +45,23 @@ class SpecManager:
 
     @staticmethod
     def _process_value(
-        val: Union[list, dict, int, float, str],
-        multiple: bool = False,
-        single_str: bool = False,
-    ) -> Union[NDArray, int, float, str]:
+        val: Any, multiple: bool = False, single_str: bool = False
+    ) -> Union[NDArray, str]:
+        """Validate the raw value type (only [list, dict, int, float, str] allowed) and parse it.
+        Create an array containing all the possible values (either the raw value itself or a processed
+        list, range dictionary or a compound variable dictionary).
+
+        :param val: A raw value
+        :type val: Any
+        :param multiple: A flag for scenarios where more than one value is allowed, defaults to False
+        :type multiple: bool, optional
+        :param single_str: A flag for scenarios where output should be a single string,
+            instead of the standard array, defaults to False
+        :type single_str: bool, optional
+        :raises SpecificationError: In case value does not stick to the guidelines
+        :return: (A) parsed value(s)
+        :rtype: Union[NDArray, str]
+        """
         if isinstance(val, (int, float, str)):
             parsed_val = val
         # list scenario
@@ -74,9 +104,24 @@ class SpecManager:
 
     @staticmethod
     def _drop_param_prefix(param: str) -> str:
+        """Find the core name based on the prefixed json parameter keys
+
+        :param param: A parameter key
+        :type param: str
+        :return: The last member of the name
+        :rtype: str
+        """
         return param.split(".")[-1]
 
-    def _param_cart(self, param_dict: Dict[str, Any]) -> pd.DataFrame:
+    def _param_cart(self, param_dict: Dict[str, NDArray]) -> pd.DataFrame:
+        """Find all the possible parameter combinations represented as data frame rows
+
+        :param param_dict: Dictionary of the parsed values
+        :type param_dict: Dict[NDArray]
+        :return: Cartesian product of the possible values.
+            Column names are the cleansed parameter core names
+        :rtype: pd.DataFrame
+        """
         # get rid of the param key prefixes
         golden_param_dict = {
             self._drop_param_prefix(param_key): param_val
@@ -90,7 +135,18 @@ class SpecManager:
         return product_df
 
     def _parse_req_part(self, part_spec: Dict[str, Any]) -> Tuple[pd.DataFrame, set]:
-        # ! it does not replace compound values yet
+        """Find all the simulation parameter sets required to create one plot.
+        Validate the values and process them, eventually generating all the possible combinations
+
+        .. note::
+            It does not replace compound values yet.
+
+        :param part_spec: Sub-dictionary of a specification dictionary describing one plot
+        :type part_spec: Dict[str, Any]
+        :raises SpecificationError: In case value does not stick to the guidelines
+        :return: Data requirements for one plot and the set of initially covered parameters
+        :rtype: Tuple[pd.DataFrame, set]
+        """
         part_spec = part_spec.copy()
         # process arguments to get the column with multiple values possible
         plot_args = part_spec.pop("plot.args")
@@ -208,6 +264,13 @@ class SpecManager:
         # TODO: check if there are the same rows between `all_plot_rel_params` if so, ERROR
 
     def _replace_compound_vals(self, part_req: pd.DataFrame) -> pd.DataFrame:
+        """Evaluate compound variables in partial requirements table
+
+        :param part_req: A raw partial requirements table
+        :type part_req: pd.DataFrame
+        :return: A partial requirements table with evaluated compound variables
+        :rtype: pd.DataFrame
+        """
         if part_req.empty:
             return part_req
         # do it just if df is not empty
@@ -228,8 +291,19 @@ class SpecManager:
     def _get_part_req_desc(
         part_req: pd.DataFrame, plot_rel_param_keys: set = {}
     ) -> dict:
-        # ! generates parameter description dict
-        # ! use before compound replaced!!!!!!!!!!!!!!
+        """Generate the dictionary of parameter values used for a specific part (one plot).
+        It can be utilized while creating a plot captions or other descriptions
+
+        .. warning::
+            Use before the compound variables evaluation.
+
+        :param part_req: A raw requirements table with evaluated compound variables
+        :type part_req: pd.DataFrame
+        :param plot_rel_param_keys: Keys of the plot-related parameters, defaults to {}
+        :type plot_rel_param_keys: set, optional
+        :return: A parameter description dictionary
+        :rtype: dict
+        """
         req_desc = part_req.iloc[0].to_dict()
         req_desc = {
             param_key: param_val
@@ -240,9 +314,24 @@ class SpecManager:
 
     def parse_req(
         self, plot_specific: bool = False
-    ) -> Union[pd.DataFrame, Dict[str, pd.DataFrame]]:
-        # ! it takes care of the data quality as well,
-        # ! so validates plot arg/group vs other available params relations
+    ) -> Union[pd.DataFrame, Tuple[Dict[str, pd.DataFrame]]]:
+        """Prepare the full requirements for all the plots. In the 'plot_specific' mode return them
+        separately in dictionaries and return also the values for the descriptions. Otherwise,
+        return just a table of all the unique sets of parameters (in rows) required for plotting
+
+        .. note::
+            Methods used to get the result take care of the data quality as well,
+            so they validates 'plot arg/group vs other available params' relations
+
+        :param plot_specific: 'Plot specific' mode flag, defaults to False
+        :type plot_specific: bool, optional
+        :raises SpecificationError: In case of parameter key errors or other specification-related issues
+        :return: Depending on the mode - a tuple of dictionaries with partial requirement tables and value descriptions
+            for each plot (in a 'plot specific' mode). In a 'non plot specific' mode just a table of all the unique
+            parameter combinations that has to be provided
+        :rtype: Union[pd.DataFrame, Tuple[Dict[str, pd.DataFrame]]]
+        """
+
         part_req_dict = dict()
         part_req_desc_dict = dict()
         for plot_name, part_spec in self.spec.items():
@@ -269,6 +358,14 @@ class SpecManager:
             return self._replace_compound_vals(full_req)
 
     def _parse_visual_part(self, part_spec: Dict[str, Any]) -> dict:
+        """Prepare the graph configuration values for one plot
+
+        :param part_spec: Sub-dictionary of a specification dictionary describing one plot
+        :type part_spec: Dict[str, Any]
+        :raises SpecificationError: _description_
+        :return: Plotting parameters (graph configuration - scales, labels, etc/.)
+        :rtype: dict
+        """
         part_spec = part_spec.copy()
         plot_args = self._process_value(part_spec.pop("plot.args"), single_str=True)
         plot_group = self._process_value(part_spec.get("plot.group"), single_str=True)
@@ -312,12 +409,27 @@ class SpecManager:
 
     @staticmethod
     def _validate_plot_name(plot_name: str) -> None:
+        """Check if the plot name is won't cause system errors neither when saving
+        as files nor rendering a latex output.
+        Only alpha-numerical characters are allowed
+
+        :param plot_name: An inserted plot name
+        :type plot_name: str
+        :raises SpecificationError: If the name is not valid
+        """
         if not plot_name.isalnum():
             raise SpecificationError(
                 f"Plot name {plot_name} is invalid. It should be alpha-numeric"
             )
 
-    def parse_visual(self):
+    def parse_visual(self) -> Dict[str, dict]:
+        """Get the plotting parameters for each plot and present them as a dictionary
+        of 'visiual parameter dictionaries' with plot names as keys
+
+        :raises SpecificationError: In case of parameter key errors or other specification-related issues
+        :return: Plotting parameters for each plot
+        :rtype: Dict[str, dict]
+        """
         part_visual_dict = dict()
         for plot_name, part_spec in self.spec.items():
             try:
@@ -336,14 +448,39 @@ class SpecManager:
 
 
 class DataManager:
+    """Output data manager. It can update the database, inform which records
+    are still not in the database and add the outcome fields to the given
+    secections of data
+
+    :param data_path: A path to the data storage xml file
+    :type data_path: Path
+    """
+
+    PRECISION = 3
+
     def __init__(self, data_path: Path) -> None:
+        """Initialize an object"""
         self.data_path = data_path
-        self.PRECISION = 3
 
     def _read_file(self) -> pd.DataFrame:
+        """Read the xml data storage file
+
+        :return: Table of the existing (simulated) data
+        :rtype: pd.DataFrame
+        """
         return pd.read_xml(self.data_path).set_index("index")
 
     def get_working_data(self, full_data_req: pd.DataFrame) -> pd.DataFrame:
+        """Transform a given requirements table by skipping the rows that are already simulated
+        and applying basic cleanse operations (dropna, null outcome cols assignment)
+
+        :param full_data_req: A full requirements table (parameter sets for all the plot cases)
+        :type full_data_req: pd.DataFrame
+        :raises FileManagementError: If the data file is somehow incomplete/damaged and cannot be processed
+        :return: Parameter sets that are not yet simulated (were not found in the database).
+            Moreover, exit time and probability columns are added to the result with the null values
+        :rtype: pd.DataFrame
+        """
         # get the existing data
         if self.data_path.is_file():
             existing_data = self._read_file()
@@ -380,6 +517,16 @@ class DataManager:
     def _req_add_results(
         self, req: pd.DataFrame, available_data: pd.DataFrame
     ) -> pd.DataFrame:
+        """Enrich a requirements table by the previously simulated outcomes. A helper method
+
+        :param req: A requirements table
+        :type req: pd.DataFrame
+        :param available_data: A table of the simulated data
+        :type available_data: pd.DataFrame
+        :raises FileManagementError: If some records required for plotting are missing in the existing data frame
+        :return: A rquirement table enriched by the exit times and probabilities
+        :rtype: pd.DataFrame
+        """
         cols = req.columns.append(pd.Index(["avg_exit_time", "exit_proba"]))
         merged_data = pd.merge(
             available_data.round(self.PRECISION),
@@ -399,6 +546,15 @@ class DataManager:
     def get_plotting_data(
         self, plot_reqs: Dict[str, pd.DataFrame]
     ) -> Dict[str, pd.DataFrame]:
+        """Based on a data requirements tables, get the simulated data required for plotting.
+        Use the simulated records stored in the xml file
+
+        :param plot_reqs: A plot requirements table
+        :type plot_reqs: Dict[str, pd.DataFrame]
+        :raises FileManagementError: If the data file cannot be read
+        :return: Requirement tables enriched by the exit times and probabilities
+        :rtype: Dict[str, pd.DataFrame]
+        """
         if self.data_path.is_file():
             available_data = self._read_file()
         else:
@@ -411,6 +567,11 @@ class DataManager:
         }
 
     def update_file(self, new_data_chunk: pd.DataFrame) -> None:
+        """Append newly simulated data to the xml data storage file
+
+        :param new_data_chunk: A chunk of some freshly simulated data
+        :type new_data_chunk: pd.DataFrame
+        """
         if self.data_path.is_file():
             existing_data = self._read_file()
             data = pd.concat(
