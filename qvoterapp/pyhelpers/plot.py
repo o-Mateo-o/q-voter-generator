@@ -5,7 +5,8 @@ import logging
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Self, Union
+from typing import Any, Union
+from typing_extensions import Self
 
 import pandas as pd
 import seaborn as sns
