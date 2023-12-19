@@ -13,6 +13,9 @@ from pyhelpers.setapp import FileManagementError, SpecificationError
 from pyhelpers.utils import CompoundVar, assure_direct_params, is_dict_with_keys
 
 
+PRECISION = 3
+
+
 class SpecManager:
     """Input specification parser
 
@@ -62,7 +65,7 @@ class SpecManager:
         :return: (A) parsed value(s)
         :rtype: Union[NDArray, str]
         """
-        if isinstance(val, (int, float, str)):
+        if isinstance(val, (str, int, float)):
             parsed_val = val
         # list scenario
         elif multiple and isinstance(val, list):
@@ -76,9 +79,16 @@ class SpecManager:
                 )
         # dictionary scenarios
         elif multiple and is_dict_with_keys(val, ("start", "step", "stop")):
-            parsed_val = np.arange(
-                start=val["start"], step=val["step"], stop=val["stop"] + val["step"]
-            )
+            reminder = np.round((val["stop"] - val["start"]) % val["step"], PRECISION)
+            if reminder == 0 or reminder == val["step"]:
+                parsed_val = np.arange(
+                    start=val["start"], step=val["step"], stop=val["stop"] + val["step"]
+                )
+            else:
+                parsed_val = np.arange(
+                    start=val["start"], step=val["step"], stop=val["stop"]
+                )
+
             if parsed_val.size == 0:
                 raise SpecificationError(
                     f"Value {val} presents an empty list of parameters"
@@ -456,8 +466,6 @@ class DataManager:
     :type data_path: Path
     """
 
-    PRECISION = 3
-
     def __init__(self, data_path: Path) -> None:
         """Initialize an object"""
         self.data_path = data_path
@@ -497,8 +505,8 @@ class DataManager:
         try:
             full_data_req_prcsd = (
                 pd.merge(
-                    full_data_req.round(self.PRECISION),
-                    existing_data.round(self.PRECISION),
+                    full_data_req.round(PRECISION),
+                    existing_data.round(PRECISION),
                     how="outer",
                     indicator=True,
                 )
@@ -529,8 +537,8 @@ class DataManager:
         """
         cols = req.columns.append(pd.Index(["avg_exit_time", "exit_proba"]))
         merged_data = pd.merge(
-            available_data.round(self.PRECISION),
-            req.round(self.PRECISION),
+            available_data.round(PRECISION),
+            req.round(PRECISION),
             how="outer",
             indicator=True,
         )
@@ -576,8 +584,8 @@ class DataManager:
             existing_data = self._read_file()
             data = pd.concat(
                 [
-                    existing_data.round(self.PRECISION),
-                    new_data_chunk.round(self.PRECISION),
+                    existing_data.round(PRECISION),
+                    new_data_chunk.round(PRECISION),
                 ],
                 ignore_index=True,
             )

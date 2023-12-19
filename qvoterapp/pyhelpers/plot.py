@@ -13,7 +13,7 @@ import seaborn as sns
 from matplotlib import pyplot as plt
 from pyhelpers.dataoper import DataManager, SpecManager
 from pyhelpers.setapp import FileManagementError, QVoterAppError
-from pyhelpers.utils import CompoundVar, assure_direct_params
+from pyhelpers.utils import CompoundVar, assure_direct_params, simplify_number
 
 
 class TextTranslatorDict(dict):
@@ -217,9 +217,10 @@ class PlotCreator:
         :return: A data frame enriched by the evaluated arguments & values
         :rtype: pd.DataFrame
         """
-        df = self.assets[plot_name]["data"]
+        df: pd.DataFrame = self.assets[plot_name]["data"]
         args = self.assets[plot_name]["visual_specs"]["args"]
         vals = self.assets[plot_name]["visual_specs"]["vals"]
+        group = self.assets[plot_name]["visual_specs"]["group"]
         df["__ARGUMENTS__"] = df.apply(
             lambda rowdict: assure_direct_params(rowdict, args, on_colnames=True),
             axis=1,
@@ -228,6 +229,8 @@ class PlotCreator:
             lambda rowdict: assure_direct_params(rowdict, vals, on_colnames=True),
             axis=1,
         )
+        if group:
+            df[group] = df[group].apply(simplify_number)
 
     def _create_single_plot(self, plot_name: str) -> None:
         """Create a single plot using seaborn/pyplot and save it to the pdf file
@@ -263,8 +266,8 @@ class PlotCreator:
             bea = (
                 ax.legend(
                     title=self.text_builder.symbol(group, simple_latex=True),
-                    loc="center left",
-                    bbox_to_anchor=(1, 0.5),
+                    # loc="center left",
+                    # bbox_to_anchor=(1, 0.5),
                 ),
             )
         # save the fig

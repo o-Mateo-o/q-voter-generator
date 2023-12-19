@@ -210,3 +210,18 @@ def is_dict_with_keys(obj: Union[dict, Any], keys: Iterable) -> bool:
         return all(key in obj for key in keys)
     else:
         return False
+
+
+def simplify_number(n: Union[int, float]) -> Union[int, float]:
+    """If the number is an integer but in a float format, simplify it by converting to int type.
+    Otherwise return it as an integer or float, respectively.
+
+    :param n: A number.
+    :type n: Union[int, float]
+    :return: A number which in case of int-like float is a real int.
+    :rtype: Union[int, float]
+    """
+    if isinstance(n, float) and n.is_integer():
+        return int(n)
+    else:
+        return n
