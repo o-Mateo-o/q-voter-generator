@@ -227,7 +227,7 @@ Existing network models along with their parameters are:
 
 (*key name*: **BA**, *wiki*: [link](https://en.wikipedia.org/wiki/Barab%C3%A1si%E2%80%93Albert_model))
 
-**WARNING:** In this model, some combination of parameters can generate isolated nodes. To avoid this undesired (for q-voter model) situation it is assumed that `n0 = k`!
+**WARNING:** This is a simplified version that takes only `n0 = k`!
 
 - `N` - number of nodes.
 - `n0` - initial number of nodes in the algorithm.
